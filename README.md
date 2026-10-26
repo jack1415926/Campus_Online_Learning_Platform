@@ -4,12 +4,12 @@
 
 ## 当前阶段
 
-**阶段 2：本地运行环境与数据库验证。** 已建立独立校园数据库、普通应用账号及启动入口。当前源码仍包含尚未适配的企业模块和历史问题，校园业务角色在阶段 3 开始处理。
+**阶段 3 已完成：三角色、教师注册审核、课程归属与审核、学生加入学习。** 已通过真实 MySQL/HTTP 回归和三角色页面验证。学习进度与通知修复、作业、考试等仍按后续阶段开发。
 
 - 正式源码位于 `backend/`，后续开发不依赖本地参考目录。
 - `nov_lms/` 是本地复用参考项目，已整体忽略，不提交到 GitHub。
 - 仅提取业务源码、静态页面和数据库迁移，不复制原配置、数据库、上传文件、虚拟环境或历史报告。
-- 使用本机 Python 3.12.14 和已安装的 MySQL 8.4.11，不下载或重装运行环境。
+- 使用 Python 3.12 和 MySQL 8.4；阶段 2 公司环境为 3.12.14 / 8.4.11，本次本机验证为 3.12.4 / 8.4.13。MySQL 可使用项目内便携版，无需管理员权限或系统服务。
 - 使用项目内 `.runtime/mysql/` 数据目录与 `127.0.0.1:3309` 独立实例；启动、停止和初始化无需 Windows 管理员权限，不使用系统服务。
 
 ## 文档
@@ -21,15 +21,15 @@
 
 | 部分 | 选择 |
 |---|---|
-| Python | 本机 3.12，本轮解释器为 3.12.14，不额外升级 Python |
+| Python | 3.12；本次验证解释器为 3.12.4 |
 | 后端 | FastAPI、Uvicorn、SQLAlchemy 同步模式、PyMySQL、Alembic |
-| 数据库 | 本机已有 MySQL 8.4 LTS，独立校园库，不下载或重装数据库 |
+| 数据库 | MySQL 8.4 LTS，独立校园库；支持已有安装或便携版 |
 | 前端 | 复用 Vue 3 + Element Plus + JavaScript 静态页面 |
-| 文件 | 本地目录；资料鉴权在后续业务阶段完善 |
+| 文件 | 本地目录；课程资料通过鉴权接口及短期资源链接访问 |
 
 依赖清单为 `backend/requirements.txt`，可复现安装使用 `backend/requirements.lock.txt`（Windows x64 / Python 3.12）。已去掉本期不需要的 OSS SDK 和 Uvicorn 可选组件，显式保留 MySQL 默认认证需要的 RSA/加密依赖。
 
-本轮已在干净虚拟环境从 wheel 独立安装锁定依赖，通过依赖一致性、5 项基础测试和真实数据库/HTTP 检查；完整在线下载遇到网络超时，安装验证使用了本机 wheel 缓存。
+阶段 2 已完成干净环境 wheel 安装验证；本次在新的 `.venv` 中通过代理在线安装全部 36 项开发依赖，依赖一致性与 5 项基础测试通过。第三阶段回归为 14 组、113 次真实 HTTP 请求，结果范围见开发记录。
 
 ## 配置和运行方式
 
@@ -42,7 +42,7 @@ python -m venv .venv
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1
 ```
 
-第一次运行会初始化项目数据目录、创建 `campus_learning` 数据库、仅授权该库的普通账号 `campus_app`、生成 `backend/.env` 和随机密钥、执行迁移，并创建平台管理员 `campus_admin`。登录密码保存在本地 `.runtime/admin.json`，可以在编辑器中查看；该文件不提交 Git。重复运行保留配置、密码和数据。
+第一次运行会初始化项目数据目录、创建 `campus_learning` 数据库、仅授权该库的普通账号 `campus_app`、生成 `backend/.env` 和随机密钥、执行迁移，并创建平台管理员 `campus_admin`。登录密码保存在本地 `.runtime/admin.json`，可以在编辑器中查看；该文件不提交 Git。重复运行保留配置、密码和数据。学生可直接注册；教师注册后需平台管理员审核，通过后才显示建课入口。
 
 这里的平台管理员是应用业务角色，不是 Windows 管理员。MySQL 内部初始化账号只用于本项目实例的建库、授权和关闭，应用始终使用普通数据库账号 `campus_app`。
 
@@ -52,7 +52,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1
 .\.venv\Scripts\python.exe scripts/setup_local.py --mysql-bin 'D:\MySQL\8.4\bin'
 ```
 
-后续启动脚本会在数据库运行时复用它；若自定义安装路径且数据库已停止，先再次执行上述命令，再启动应用。
+脚本会在本地忽略的凭据文件中记住成功使用的 MySQL 程序路径。后续直接使用 `start-local.ps1`，数据库停止后也能从该路径启动；命令行 `--mysql-bin` 可覆盖旧路径。
+
+公司电脑没有 Windows 管理员权限时，同样在普通终端运行。如果没有已有 MySQL 8.4 安装，可从 [MySQL 官方 Windows 下载页](https://dev.mysql.com/downloads/mysql/8.4.html?os=3) 获取 ZIP 便携版，核对官方校验值后解压到项目 `.local/`（不提交 Git）。例如本次使用：
+
+```powershell
+.\.venv\Scripts\python.exe scripts/setup_local.py --mysql-bin '.local/mysql-8.4.13-winx64/bin'
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-local.ps1
+```
+
+不需要以管理员身份打开终端，不使用 `RunAs` 或 UAC，不安装/控制 Windows 服务，也不使用系统 MySQL 数据目录。MySQL 自带的内部初始化账号只用于本项目实例的建库、授权和关闭，不创建额外的 MySQL 管理员账号；应用和迁移使用普通账号 `campus_app`。网页 `campus_admin` 只是教师和课程审核所需的业务角色。若公司策略禁止运行便携程序，应按该策略处理；本次没有实际在公司电脑复测。
 
 校园版入口：<http://127.0.0.1:20081/>。存活检查 `/api/v1/health` 不依赖数据库；就绪检查 `/api/v1/ready` 在数据库可用且已迁移时返回 200，否则返回 503；API 文档为 `/docs`。
 
@@ -69,7 +78,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local.ps1 -Data
 
 后端代码修改后先停止再启动。应用日志在 `.runtime/app.log`、`.runtime/app.err`，数据库日志在 `.runtime/mysql/server.log`。`.runtime/`、`backend/.env`、上传目录均被 Git 忽略。
 
-本期仍是本地开发基线；校园权限、成绩逻辑和文件访问等问题在对应阶段处理，完成目标环境验证前不作为已验收系统对外部署。
+当前只完成阶段 1～3。成绩、学习进度与通知等历史问题仍在后续阶段处理；考试等旧接口暂限管理员，页面不提供尚未适配的考核入口。本阶段通过不代表全部需求已验收或可对外部署。
 
 ## 环境检查
 
@@ -81,6 +90,10 @@ Set-Location backend
 Set-Location ..
 # 应用启动后验证真实 MySQL 和 HTTP 登录。
 .\.venv\Scripts\python.exe scripts/check_environment.py
+# 第三阶段真实接口回归（会创建随机测试账号、课程和文件，不清空现有数据）。
+.\.venv\Scripts\python.exe scripts/check_stage3.py
 ```
 
 基础单元测试不连接数据库。`check_environment.py` 仅在本地校园库创建一条随机标记的临时课程，提交后用新会话校验中文与 JSON 持久化，并清理该行；另检查普通账号不能访问系统用户表、HTTP 登录和就绪接口，结果保存在 `.runtime/environment-check.json`。这不替代完整校园业务验收。
+
+`check_stage3.py` 的摘要和测试凭据分别保存在 `.runtime/stage3-results.json`、`.runtime/stage3-accounts.json`；不要公开凭据文件。测试数据保留用于本地页面回归；脚本会重新登录测试管理员，请勿同时用该账号进行其他验证（系统采用单会话登录）。页面验收截图位于 `.runtime/stage3-browser/`，不提交 Git。

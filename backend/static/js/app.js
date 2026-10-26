@@ -225,7 +225,7 @@ const CourseDetailPage = {
             </div>
             <div style="display:flex;align-items:center;gap:4px">
               <span style="font-size:12px;color:#909399;margin-right:4px">{{ ch.estimated_minutes }}分钟</span>
-              <el-button size="small" type="primary" @click.stop="selectChapter(ch)">学习</el-button>
+              <el-button size="small" type="primary" @click.stop="selectChapter(ch)" v-if="canManage || course.can_learn">{{ canManage ? '预览' : '学习' }}</el-button>
               <el-button size="small" text @click.stop="openEditCh(ch)" v-if="course.can_edit">编辑</el-button>
               <el-button size="small" type="danger" text @click.stop="delChapter(ch)" v-if="course.can_edit">删除</el-button>
             </div>
@@ -415,8 +415,7 @@ const CourseDetailPage = {
         const type = contentType || "document";
         const r = await api.listMedia({ page:1, page_size:100, media_type: type });
         let items = r.items || [];
-        // 文档章节只允许关联 PDF（Word/PPT 已限制上传，这里兜底过滤，用文件名判断）
-        if (type === "document") items = items.filter(m => (m.name || "").toLowerCase().endsWith(".pdf"));
+        if (type === "document") items = items.filter(m => /\.(pdf|docx)$/i.test(m.name || ""));
         mediaList.value = items;
       } catch(e) {}
     };

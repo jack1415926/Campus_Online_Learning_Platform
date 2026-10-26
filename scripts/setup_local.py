@@ -134,6 +134,8 @@ def start_database(mysql_bin):
     finally:
         connection.close()
     print(f"MySQL {version} ready at 127.0.0.1:{PORT}; application user: {APP_USER}.")
+    state["mysql_bin"] = str(mysql_bin)
+    write_json(STATE, state)
     return state
 
 
@@ -208,10 +210,13 @@ if __name__ == "__main__":
     if sys.version_info[:2] != (3, 12):
         raise RuntimeError("Use the existing Python 3.12 environment for this project.")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mysql-bin", type=Path, default=Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "MySQL/MySQL Server 8.4/bin")
+    parser.add_argument("--mysql-bin", type=Path, help="Existing MySQL 8.4 bin directory; remembered for subsequent starts")
     parser.add_argument("--stop-db", action="store_true")
     args = parser.parse_args()
     if args.stop_db:
         stop_database()
     else:
-        configure_application(start_database(args.mysql_bin.resolve()))
+        state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
+        mysql_bin = args.mysql_bin or Path(state.get("mysql_bin") or
+            Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "MySQL/MySQL Server 8.4/bin")
+        configure_application(start_database(mysql_bin.resolve()))

@@ -1,12 +1,15 @@
 """Real HTTP/MySQL stage-3 regression. Creates uniquely named local QA data."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
+from io import BytesIO
 import json
 import os
 from pathlib import Path
 import secrets
 import sys
 import uuid
+from zipfile import ZipFile
 
 import httpx
 
@@ -63,13 +66,30 @@ def main():
     student, student2, teacher, teacher2 = [client_for(accounts[k]) for k in ("student", "student2", "teacher", "teacher2")]
     for label, client in (("student", student), ("student2", student2), ("teacher", teacher), ("teacher2", teacher2)):
         accounts[label]["id"] = call(client, "GET", "/api/v1/auth/me").json()["id"]
-    call(anonymous, "POST", "/api/v1/auth/register", status=422, json={**accounts["student"], "role": "admin"})
+    registration = {k: accounts["student"][k] for k in ("username", "email", "password", "full_name", "role")}
+    call(anonymous, "POST", "/api/v1/auth/register", status=422, json={**registration, "role": "admin"})
     call(anonymous, "POST", "/api/v1/auth/register", status=409, json={k: accounts["student"][k] for k in ("username", "email", "password", "full_name", "role")})
     call(student, "POST", "/api/v1/users/"+accounts["student"]["id"]+"/roles", status=403, json={"role_code":"admin"})
     call(student, "PUT", "/api/v1/users/me/profile", status=422, json={"full_name":"学生", "email":accounts["student"]["email"], "custom_fields":{"role":"admin"}})
     call(teacher, "POST", "/api/v1/courses", status=403, json={"title":"未审核教师建课"})
     call(teacher, "POST", "/api/v1/exams", status=403, json={"title":"未审核教师建考核"})
     passed("注册、重复账号、公开注册不得提权、待审教师不得建课或考核")
+
+    profile = {"full_name": "校园学生资料更新", "email": prefix + "_updated@example.com"}
+    call(student, "PUT", "/api/v1/users/me/profile", status=422, json={**profile, "email": "invalid"})
+    call(student, "PUT", "/api/v1/users/me/profile", status=409, json={**profile, "email": accounts["student2"]["email"]})
+    call(student, "PUT", "/api/v1/users/me/profile", json=profile)
+    assert all(call(student, "GET", "/api/v1/users/me/profile").json()[k] == v for k, v in profile.items())
+    with SessionLocal() as db:
+        persisted = db.get(User, accounts["student"]["id"])
+        assert (persisted.full_name, persisted.email) == (profile["full_name"], profile["email"])
+        assert persisted.password_hash != accounts["student"]["password"]
+    from app.core.security import create_access_token, decode_token
+    claims = decode_token(student.headers["Authorization"].removeprefix("Bearer "))
+    expired = create_access_token(claims["sub"], session_id=claims["sid"], session_token=claims["sess"],
+        extra_claims={"exp": datetime.now(timezone.utc) - timedelta(minutes=1)})
+    call(anonymous, "GET", "/api/v1/auth/me", status=401, headers={"Authorization": "Bearer " + expired})
+    passed("个人资料格式与唯一性校验、更新持久化、密码摘要、过期凭据拒绝")
 
     t2 = accounts["teacher2"]["id"]
     call(admin, "POST", f"/api/v1/users/{t2}/teacher-review", status=422, json={"decision":"reject"})
@@ -78,6 +98,8 @@ def main():
     for label in ("teacher", "teacher2"):
         call(admin, "POST", f"/api/v1/users/{accounts[label]['id']}/teacher-review", json={"decision":"approve"})
     assert call(teacher, "GET", "/api/v1/auth/me").json()["roles"] == ["teacher"]
+    filtered = call(admin, "GET", "/api/v1/users", params={"keyword": prefix, "review_status": "approved"}).json()["items"]
+    assert {u["id"] for u in filtered} == {accounts[k]["id"] for k in ("teacher", "teacher2")}
     passed("教师审核驳回原因、重新通过、已有登录立即取得教师权限")
 
     course = call(teacher, "POST", "/api/v1/courses", status=201, json={"title":prefix+"_校园课程", "description":"阶段三课程权限验收"}).json()
@@ -99,10 +121,23 @@ def main():
     call(student, "GET", "/api/v1/media", status=403)
     call(teacher, "POST", "/api/v1/media/upload", status=422, files={"file":("fake.pdf",b"<script>bad</script>","application/pdf")})
     call(teacher, "POST", f"/api/v1/courses/{cid}/chapters", status=201, json={"title":"课程资料", "content_type":"document", "content_ref_id":aid,"sort_order":1})
+    call(teacher, "POST", f"/api/v1/courses/{cid}/chapters", status=422, json={"title":"错误视频资料", "content_type":"video", "content_ref_id":aid})
+    call(teacher, "PUT", f"/api/v1/courses/{cid}/chapters/{chapter['id']}", status=422, json={"content_ref_id":aid})
     call(teacher, "DELETE", f"/api/v1/media/{aid}", status=409)
     passed("资料仅本人管理、不可盗用附件、扩展名校验、引用资料不可删除")
 
+    document = BytesIO()
+    with ZipFile(document, "w") as archive_file:
+        archive_file.writestr("[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>')
+        archive_file.writestr("word/document.xml", '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body/></w:document>')
+    docx = document.getvalue()
+    word = call(teacher, "POST", "/api/v1/media/upload", status=201, files={"file":("stage3.docx", docx, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}).json()
+    word_chapter = call(teacher, "POST", f"/api/v1/courses/{cid}/chapters", status=201,
+        json={"title":"Word课程资料", "content_type":"document", "content_ref_id":word["id"], "sort_order":2}).json()
+    call(teacher, "PUT", f"/api/v1/courses/{cid}/chapters/{word_chapter['id']}", status=422, json={"content_type":"video"})
+
     call(teacher, "POST", f"/api/v1/courses/{cid}/publish", json={"action":"submit_review"})
+    call(teacher, "PUT", f"/api/v1/courses/{cid}/chapters/{chapter['id']}", status=409, json={"title":"审核中修改"})
     call(student, "GET", f"/api/v1/courses/{cid}", status=403)
     call(teacher, "POST", f"/api/v1/courses/{cid}/publish", status=403, json={"action":"publish"})
     call(admin, "POST", f"/api/v1/courses/{cid}/publish", json={"action":"reject","reason":"请完善课程描述"})
@@ -111,6 +146,9 @@ def main():
     call(teacher, "POST", f"/api/v1/courses/{cid}/publish", json={"action":"submit_review"})
     call(admin, "POST", f"/api/v1/courses/{cid}/publish", json={"action":"publish"})
     passed("课程提交、教师不能自发布、管理员驳回与重新审核发布")
+    own_courses = call(teacher2, "GET", "/api/v1/courses", params={"managed": "true", "keyword": prefix}).json()["items"]
+    assert not own_courses
+    assert not call(teacher2, "GET", f"/api/v1/courses/{cid}").json()["can_manage"]
 
     preview = call(student,"GET",f"/api/v1/courses/{cid}").json()
     assert not preview["can_learn"] and all(ch["text_content"] is None and ch["content_ref_id"] is None for ch in preview["chapters"])
@@ -140,6 +178,10 @@ def main():
     call(anonymous,"GET",ticket.replace(aid,other["id"]),status=403)
     call(anonymous,"GET","/api/v1/auth/me",status=401,headers={"Authorization":"Bearer "+ticket.split("ticket=")[1]})
     passed("课程附件签名链接、Range读取、不可换资源ID或充当登录令牌")
+    word_ticket = call(student, "GET", f"/api/v1/media/{word['id']}/url").json()["url"]
+    assert call(anonymous, "GET", word_ticket).content == docx
+    call(student2, "GET", f"/api/v1/media/{word['id']}/url", status=403)
+    passed("DOCX上传关联与成员下载，章节和资料类型一致")
 
     call(teacher,"PUT",f"/api/v1/courses/{cid}",status=409,json={"title":"修改已发布内容"})
     call(teacher,"POST",f"/api/v1/courses/{cid}/chapters",status=409,json={"title":"新章","content_type":"text","text_content":"冻结"})
@@ -184,7 +226,11 @@ def main():
     # Separate random QA administrator for browser tests; never expose real admin credentials.
     accounts["admin"]={"username":prefix+"_admin", "password":secrets.token_urlsafe(18),"full_name":"阶段三测试管理员","email":prefix+"_admin@example.com","role_code":"admin"}
     call(admin,"POST","/api/v1/users",status=201,json=accounts["admin"])
-    summary={"prefix":prefix,"course_id":cid,"course_title":course["title"],"asset_id":aid,"http_requests":request_count,"checks":checks,"scope":"Stage 3 only; no full learning/exam acceptance"}
+    with SessionLocal() as db:
+        from sqlalchemy import text
+        database_version = db.scalar(text("SELECT VERSION()"))
+        migration = db.scalar(text("SELECT version_num FROM alembic_version"))
+    summary={"tested_at":datetime.now(timezone.utc).isoformat(),"python":sys.version.split()[0],"mysql":database_version,"migration":migration,"prefix":prefix,"course_id":cid,"course_title":course["title"],"asset_id":aid,"word_asset_id":word["id"],"http_requests":request_count,"checks":checks,"scope":"Stage 3 only; no full learning/exam acceptance"}
     private_accounts={k:{a:b for a,b in v.items() if a in ("username","password","id")} for k,v in accounts.items()}
     (ROOT/".runtime/stage3-accounts.json").write_text(json.dumps(private_accounts,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     (ROOT/".runtime/stage3-results.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

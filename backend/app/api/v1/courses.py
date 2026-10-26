@@ -54,15 +54,21 @@ def _course_to_response(course: Course, db, user) -> dict:
     return data
 
 
-def _validate_resources(db, requester, body, course_id=None):
-    references = [c.content_ref_id for c in getattr(body, "chapters", []) if c.content_ref_id]
-    if getattr(body, "content_ref_id", None):
-        references.append(body.content_ref_id)
-    for asset_id in references:
+def _validate_resources(db, requester, body, course_id=None, chapter=None):
+    chapters = list(getattr(body, "chapters", []))
+    if hasattr(body, "content_type"):
+        chapters.append(body)
+    for item in chapters:
+        asset_id = item.content_ref_id if "content_ref_id" in item.model_fields_set else getattr(chapter, "content_ref_id", None)
+        if not asset_id:
+            continue
         asset = db.get(MediaAsset, asset_id)
         if not asset:
             raise HTTPException(422, "引用的资料不存在")
         access.require_asset_owner(db, requester, asset)
+        content_type = item.content_type or getattr(chapter, "content_type", None)
+        if content_type != asset.media_type.value:
+            raise HTTPException(422, "章节类型与资料类型不符")
     cover = getattr(body, "cover_image_url", None)
     if cover and cover.startswith("/storage/"):
         asset = db.scalar(select(MediaAsset).where(MediaAsset.storage_key == cover.removeprefix("/storage/")))
@@ -251,12 +257,12 @@ def update_chapter(
 ):
     _check_perm(db, requester, Perm.COURSE_UPDATE)
     access.get_course(db, requester, course_id, manage=True, edit=True)
-    _validate_resources(db, requester, body, course_id)
     chapter = (db.execute(
         select(Chapter).where(Chapter.id == chapter_id, Chapter.course_id == course_id)
     )).scalar_one_or_none()
     if not chapter:
         raise HTTPException(404, "Chapter not found")
+    _validate_resources(db, requester, body, course_id, chapter=chapter)
     if "title" in body.model_fields_set and not (body.title or "").strip():
         raise HTTPException(422, "章节标题不能为空")
     data = body.model_dump(exclude_unset=True)
