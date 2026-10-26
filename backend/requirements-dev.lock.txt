@@ -1,0 +1,5 @@
+# Tested development dependencies for the Windows/Python 3.12 runtime lock.
+-r requirements.lock.txt
+certifi==2026.10.19
+httpcore==1.0.9
+httpx==0.28.1

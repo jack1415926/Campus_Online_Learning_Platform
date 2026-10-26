@@ -44,9 +44,10 @@ async def lifespan(app: FastAPI):
         seed_rbac(db)
         db.commit()
         logger.info("Database seeding completed")
-    except Exception as e:
+    except Exception:
         db.rollback()
-        logger.warning("Database seeding skipped: %s", e)
+        logger.exception("Database initialization failed; run migrations before starting the app.")
+        raise
     finally:
         db.close()
 

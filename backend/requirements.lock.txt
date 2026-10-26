@@ -1,0 +1,35 @@
+# CPython 3.12 / Windows x64; installed dependency closure verified 2026-10-26.
+# Includes dependencies only, excluding unused reference-project SDKs.
+alembic==1.14.1
+annotated-types==0.8.0
+anyio==4.15.1
+bcrypt==4.2.1
+cffi==2.1.1
+click==8.5.0
+cryptography==50.0.2
+dnspython==2.9.0
+ecdsa==0.19.2
+email-validator==2.3.0
+et-xmlfile==2.0.0
+fastapi==0.115.6
+greenlet==3.5.6
+h11==0.16.0
+idna==3.20
+mako==1.4.3
+markupsafe==3.0.4
+openpyxl==3.1.5
+pyasn1==0.6.4
+pycparser==3.11
+pydantic==2.10.4
+pydantic-core==2.27.2
+pydantic-settings==2.7.1
+pymysql==1.2.0
+python-dotenv==1.0.1
+python-jose==3.3.0
+python-multipart==0.0.20
+rsa==4.9.1
+six==1.17.0
+sqlalchemy==2.0.36
+starlette==0.41.3
+typing-extensions==4.16.0
+uvicorn==0.34.0

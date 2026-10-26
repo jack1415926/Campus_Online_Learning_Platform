@@ -1,6 +1,11 @@
 """Aggregate all v1 API routers."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.sso import router as sso_router
@@ -37,4 +42,16 @@ api_router.include_router(department_router)
 
 @api_router.get("/health", tags=["system"])
 def health_check():
+    return {"status": "ok"}
+
+
+@api_router.get("/ready", tags=["system"])
+def readiness_check(db: Session = Depends(get_db)):
+    """Unlike liveness, readiness requires a reachable, migrated database."""
+    try:
+        revision = db.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+        if not revision:
+            raise HTTPException(503, "Database is not ready")
+    except SQLAlchemyError:
+        raise HTTPException(503, "Database is not ready") from None
     return {"status": "ok"}

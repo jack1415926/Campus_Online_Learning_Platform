@@ -1,11 +1,11 @@
 # Web framework
 fastapi==0.115.6
-uvicorn[standard]==0.34.0
+uvicorn==0.34.0
 python-multipart==0.0.20
 
 # Database (sync driver, project uses synchronous SQLAlchemy + PyMySQL)
 sqlalchemy==2.0.36
-pymysql==1.2.0
+pymysql[rsa]==1.2.0
 alembic==1.14.1
 
 # Validation & Settings

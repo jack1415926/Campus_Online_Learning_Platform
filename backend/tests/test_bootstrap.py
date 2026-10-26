@@ -2,7 +2,7 @@
 
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -15,6 +15,7 @@ with patch.dict(os.environ, {
     "DEBUG": "false",
 }):
     from app.config import Settings
+    from app.database import get_db
     from app.main import app
 
 
@@ -63,6 +64,21 @@ class BootstrapTests(unittest.TestCase):
             )
             self.assertFalse(settings.debug)
             self.assertEqual(settings.app_name, "校园在线学习平台")
+
+    def test_readiness_requires_database_and_hides_internal_errors(self):
+        from sqlalchemy.exc import OperationalError
+
+        database = MagicMock()
+        app.dependency_overrides[get_db] = lambda: database
+        try:
+            database.execute.return_value.scalar_one.return_value = "test-revision"
+            self.assertEqual(self.client.get("/api/v1/ready").status_code, 200)
+            database.execute.side_effect = OperationalError("private-sql", {}, Exception("private-details"))
+            response = self.client.get("/api/v1/ready")
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.json(), {"detail": "Database is not ready"})
+        finally:
+            app.dependency_overrides.pop(get_db, None)
 
 
 if __name__ == "__main__":
