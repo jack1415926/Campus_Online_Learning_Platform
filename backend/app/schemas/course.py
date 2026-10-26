@@ -1,6 +1,7 @@
 """Schemas for courses and chapters (CM-01 through CM-07)."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -8,7 +9,7 @@ from app.models.course import ContentType, CourseStatus, Difficulty
 
 
 class ChapterBase(BaseModel):
-    title: str = Field(..., max_length=255)
+    title: str = Field(..., min_length=1, max_length=255)
     content_type: ContentType = ContentType.video
     content_ref_id: str | None = None
     text_content: str | None = None
@@ -42,7 +43,7 @@ class ChapterResponse(ChapterBase):
 
 
 class CourseBase(BaseModel):
-    title: str = Field(..., max_length=255)
+    title: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
     cover_image_url: str | None = Field(None, max_length=1000)
     category_id: str | None = None
@@ -70,6 +71,7 @@ class CourseUpdate(BaseModel):
 
 
 class CourseResponse(CourseBase):
+    cover_preview_url: str | None = None
     id: str
     status: CourseStatus
     version: int
@@ -78,6 +80,11 @@ class CourseResponse(CourseBase):
     created_at: datetime
     tag_ids: list[str] = []
     completion_config: dict | None = None
+    review_reason: str | None = None
+    is_enrolled: bool = False
+    can_manage: bool = False
+    can_edit: bool = False
+    can_learn: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -98,4 +105,5 @@ class CourseListFilter(BaseModel):
 
 class PublishAction(BaseModel):
     """Course publish workflow action (CM-04)."""
-    action: str = Field(..., description="submit_review | publish | archive")
+    action: Literal["submit_review", "publish", "reject", "archive", "unpublish"]
+    reason: str = Field(default="", max_length=1000)

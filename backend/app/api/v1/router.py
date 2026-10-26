@@ -1,11 +1,15 @@
 """Aggregate all v1 API routers."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.api.deps import get_current_user
+from app.core.permissions import Perm
+from app.core.rbac import require_permission
+from app.core.campus_access import require_admin, roles_for
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.sso import router as sso_router
@@ -24,20 +28,29 @@ from app.api.v1.dictionary import (
 )
 
 api_router = APIRouter()
+admin_only = [Depends(require_permission(Perm.SYSTEM_CONFIG))]
+
+
+def taxonomy_access(request: Request, user=Depends(get_current_user), db=Depends(get_db)):
+    if request.method != "GET":
+        require_admin(db, user)
+
+
 api_router.include_router(auth_router)
-api_router.include_router(sso_router)
+api_router.include_router(sso_router, dependencies=admin_only)
 api_router.include_router(users_router)
-api_router.include_router(categories_router)
-api_router.include_router(tag_router)
+api_router.include_router(categories_router, dependencies=[Depends(taxonomy_access)])
+api_router.include_router(tag_router, dependencies=[Depends(taxonomy_access)])
 api_router.include_router(media_router)
 api_router.include_router(courses_router)
 api_router.include_router(learning_router)
 api_router.include_router(notifications_router)
-api_router.include_router(exams_router)
-api_router.include_router(reports_router)
-api_router.include_router(job_level_router)
-api_router.include_router(position_router)
-api_router.include_router(department_router)
+# Legacy modules stay admin-only until their campus data scope is implemented.
+api_router.include_router(exams_router, dependencies=admin_only)
+api_router.include_router(reports_router, dependencies=admin_only)
+api_router.include_router(job_level_router, dependencies=admin_only)
+api_router.include_router(position_router, dependencies=admin_only)
+api_router.include_router(department_router, dependencies=admin_only)
 
 
 @api_router.get("/health", tags=["system"])

@@ -2,7 +2,9 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from app.core import campus_access as access
+from app.models.course import Chapter, CourseStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,7 +26,14 @@ from app.services.learning_service import (
     AssignmentService, LearningPathService, LearningRecordService, TrainingPlanService,
 )
 
-router = APIRouter(prefix="/learning", tags=["learning"])
+def learning_access(request: Request, user=Depends(get_current_user), db=Depends(get_db)):
+    if request.url.path.startswith(("/api/v1/learning/plans", "/api/v1/learning/paths", "/api/v1/learning/assignments")):
+        access.require_admin(db, user)
+    elif not access.roles_for(db, user):
+        raise HTTPException(403, "账号尚未获得校园角色")
+
+
+router = APIRouter(prefix="/learning", tags=["learning"], dependencies=[Depends(learning_access)])
 
 
 def _check_perm(db: Session, user: User, *perms: str):
@@ -165,6 +174,12 @@ def get_my_assignments(requester: User = Depends(get_current_user), db: Session 
 @router.post("/progress", response_model=LearningRecordResponse)
 def update_progress(body: ProgressUpdateRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """LM-04, LM-05: update learning progress. Works for both PC and mobile (LM-06)."""
+    course = access.get_course(db, requester, body.course_id, learn=True)
+    if "student" not in access.roles_for(db, requester) or course.status != CourseStatus.published:
+        raise HTTPException(403, "仅已加入的学生可更新已发布课程的学习记录")
+    chapter = db.get(Chapter, body.chapter_id) if body.chapter_id else None
+    if chapter is None or str(chapter.course_id) != body.course_id:
+        raise HTTPException(422, "章节不属于该课程")
     record = LearningRecordService.update_progress(db, requester.id, body)
     db.commit()
     return record
@@ -173,18 +188,22 @@ def update_progress(body: ProgressUpdateRequest, requester: User = Depends(get_c
 @router.get("/progress/{course_id}", response_model=CourseProgressResponse)
 def get_course_progress(course_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """LM-04, LM-08: get aggregated course progress."""
+    access.get_course(db, requester, course_id, learn=True)
     return LearningRecordService.get_course_progress(db, requester.id, course_id)
 
 
 @router.get("/records", response_model=list[LearningRecordResponse])
 def get_my_records(course_id: str | None = Query(None), requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get learning records for the current user."""
+    if course_id:
+        access.get_course(db, requester, course_id, learn=True)
     return LearningRecordService.get_user_records(db, requester.id, course_id)
 
 
 @router.get("/resume/{course_id}", response_model=LearningRecordResponse | None)
 def get_resume_position(course_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """LM-05: get last learning position for resume."""
+    access.get_course(db, requester, course_id, learn=True)
     record = LearningRecordService.get_resume_position(db, requester.id, course_id)
     return record
 
@@ -192,6 +211,7 @@ def get_resume_position(course_id: str, requester: User = Depends(get_current_us
 @router.post("/reset/{course_id}", status_code=200)
 def reset_course_progress(course_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Reset all learning records for a course, allowing re-learning."""
+    access.require_admin(db, requester)
     LearningRecordService.reset_progress(db, requester.id, course_id)
     db.commit()
     return {"message": "Progress reset"}

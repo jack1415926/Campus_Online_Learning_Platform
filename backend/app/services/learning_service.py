@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.course import Chapter, Course
+from app.models.course import Chapter, Course, CourseStatus
 from app.models.exam import Exam, ExamRecord
 from app.models.learning import (
     AssignmentType, CompletionStatus, CourseAssignment, LearningPath,
@@ -217,16 +217,15 @@ class AssignmentService:
 
     @staticmethod
     def get_user_assignments(db: Session, user: User):
-        from sqlalchemy import or_
-        conditions = [CourseAssignment.target_id == user.id]
-        if user.department_id:
-            conditions.append(CourseAssignment.target_id == user.department_id)
-        if user.job_level:
-            conditions.append(CourseAssignment.target_id == user.job_level)
-        if user.position:
-            conditions.append(CourseAssignment.target_id == user.position)
-        stmt = select(CourseAssignment).where(or_(*conditions))
-        return list(db.execute(stmt).scalars().all())
+        stmt = select(CourseAssignment, Course.title).join(Course, Course.id == CourseAssignment.course_id).where(
+            CourseAssignment.assignment_type == AssignmentType.user, CourseAssignment.target_id == str(user.id),
+            Course.status.in_([CourseStatus.published, CourseStatus.archived]),
+        )
+        assignments = []
+        for assignment, title in db.execute(stmt):
+            assignment.course_title = title
+            assignments.append(assignment)
+        return assignments
 
 
 class LearningRecordService:

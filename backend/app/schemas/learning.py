@@ -79,6 +79,7 @@ class CourseAssignmentCreate(BaseModel):
 
 
 class CourseAssignmentResponse(BaseModel):
+    course_title: str | None = None
     id: str
     course_id: str
     assignment_type: AssignmentType

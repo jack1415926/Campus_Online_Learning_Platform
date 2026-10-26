@@ -52,42 +52,14 @@ class RoleCode:
     ADMIN = "admin"
     AUTHOR = "author"
     SYSADMIN = "sysadmin"
+    STUDENT = "student"
+    TEACHER = "teacher"
 
 
-# Builtin role -> default permissions mapping (used for seeding)
-BUILTIN_ROLE_PERMISSIONS: dict[str, list[str]] = {
-    RoleCode.LEARNER: [
-        Perm.COURSE_READ,
-        Perm.LEARNING_READ,
-        Perm.EXAM_READ,
-        Perm.REPORT_READ,
-    ],
-    RoleCode.MANAGER: [
-        Perm.USER_READ,
-        Perm.COURSE_READ,
-        Perm.LEARNING_READ,
-        Perm.LEARNING_ASSIGN,
-        Perm.EXAM_READ,
-        Perm.REPORT_READ,
-        Perm.REPORT_EXPORT,
-    ],
-    RoleCode.ADMIN: [
-        Perm.USER_READ, Perm.USER_CREATE, Perm.USER_UPDATE, Perm.USER_DELETE,
-        Perm.ORG_READ, Perm.ORG_MANAGE,
-        Perm.COURSE_READ, Perm.COURSE_CREATE, Perm.COURSE_UPDATE,
-        Perm.COURSE_DELETE, Perm.COURSE_PUBLISH,
-        Perm.LEARNING_READ, Perm.LEARNING_ASSIGN, Perm.LEARNING_MANAGE,
-        Perm.EXAM_READ, Perm.EXAM_CREATE, Perm.EXAM_GRADE,
-        Perm.REPORT_READ, Perm.REPORT_EXPORT,
-    ],
-    RoleCode.AUTHOR: [
-        Perm.COURSE_READ, Perm.COURSE_CREATE, Perm.COURSE_UPDATE,
-        Perm.COURSE_PUBLISH,
-    ],
-    RoleCode.SYSADMIN: [
-        Perm.USER_READ, Perm.USER_CREATE, Perm.USER_UPDATE, Perm.USER_DELETE,
-        Perm.ORG_READ, Perm.ORG_MANAGE,
-        Perm.SYSTEM_CONFIG, Perm.SYSTEM_AUDIT,
-        Perm.REPORT_READ, Perm.REPORT_EXPORT,
-    ],
+# Campus roles use the existing permission mechanism. Exam/report permissions
+# become available with their scoped business endpoints in later stages.
+BUILTIN_ROLE_PERMISSIONS = {
+    RoleCode.STUDENT: [Perm.COURSE_READ, Perm.LEARNING_READ],
+    RoleCode.TEACHER: [Perm.COURSE_READ, Perm.COURSE_CREATE, Perm.COURSE_UPDATE, Perm.COURSE_DELETE, Perm.LEARNING_READ],
+    RoleCode.ADMIN: [value for name, value in vars(Perm).items() if name.isupper()],
 }

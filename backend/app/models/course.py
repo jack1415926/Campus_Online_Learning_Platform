@@ -11,6 +11,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     Enum,
+    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -82,6 +83,9 @@ class Course(Base, UUIDPrimaryKey, TimestampMixin):
     version: Mapped[int] = mapped_column(Integer, default=1)
     completion_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    review_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(CHAR(36), nullable=True)
+    reviewed_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rating: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     category: Mapped["Category | None"] = relationship(

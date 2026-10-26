@@ -27,8 +27,11 @@ class CourseService:
         page: int = 1,
         page_size: int = 20,
         course_ids: list[str] | None = None,
+        creator_id: str | None = None,
     ) -> tuple[list[Course], int]:
         stmt = select(Course)
+        if creator_id is not None:
+            stmt = stmt.where(Course.created_by == creator_id)
         if course_ids is not None:
             if not course_ids:
                 return [], 0

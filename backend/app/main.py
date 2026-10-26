@@ -100,7 +100,6 @@ if os.path.isdir(static_dir):
 
     storage_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "storage")
     os.makedirs(storage_dir, exist_ok=True)
-    app.mount("/storage", StaticFiles(directory=storage_dir), name="storage")
 
     @app.get("/", response_class=FileResponse)
     async def index():
@@ -108,7 +107,7 @@ if os.path.isdir(static_dir):
 
     @app.get("/{path:path}")
     async def spa_fallback(path: str):
-        if path == "api" or path.startswith("api/"):
+        if path == "api" or path.startswith(("api/", "storage/")) or path == "storage":
             raise HTTPException(status_code=404, detail="Not Found")
         # StaticFiles owns file serving; never resolve a route as a disk path.
         return FileResponse(os.path.join(static_dir, "index.html"))

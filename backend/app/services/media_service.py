@@ -16,8 +16,11 @@ class MediaService:
         filt: MediaAssetListFilter | None = None,
         page: int = 1,
         page_size: int = 20,
+        uploaded_by: str | None = None,
     ) -> tuple[list[MediaAsset], int]:
         stmt = select(MediaAsset)
+        if uploaded_by is not None:
+            stmt = stmt.where(MediaAsset.uploaded_by == uploaded_by)
         if filt:
             if filt.media_type:
                 stmt = stmt.where(MediaAsset.media_type == filt.media_type)

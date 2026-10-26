@@ -17,7 +17,7 @@ class LocalAuthProvider(AuthenticationProvider):
                  full_name: str, employee_id: str | None = None, phone: str | None = None) -> AuthResult:
         existing = db.execute(
             select(User).where((User.username == username) | (User.email == email))
-        ).scalar_one_or_none()
+        ).scalars().first()
         if existing:
             raise AuthError("Username or email already registered", 409)
         user = User(

@@ -69,7 +69,7 @@ def main():
         assert response.status_code == 200, response.status_code
         profile = response.json()
         assert profile["username"] == "campus_admin"
-        assert {"admin", "sysadmin"}.issubset(profile["roles"])
+        assert "admin" in profile["roles"]
         assert client.get("/api/v1/auth/me").status_code == 401
         assert client.get("/api/v1/not-an-api").status_code == 404
 

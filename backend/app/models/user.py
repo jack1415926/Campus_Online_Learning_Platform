@@ -3,7 +3,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, JSON, String
+from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKey
@@ -28,6 +28,11 @@ class User(Base, UUIDPrimaryKey, TimestampMixin):
         String(50), unique=True, nullable=True, index=True
     )
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    requested_role: Mapped[str] = mapped_column(String(20), default="student", server_default="student")
+    teacher_review_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    teacher_review_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    teacher_reviewed_by: Mapped[str | None] = mapped_column(CHAR(36), nullable=True)
+    teacher_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 

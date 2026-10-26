@@ -179,7 +179,7 @@ def configure_application(state):
                 password=password, full_name="校园平台管理员",
             ).user
             assign_role(db, user, "admin", DataScope.company)
-            assign_role(db, user, "sysadmin", DataScope.company)
+            user.requested_role = "admin"
             db.commit()
             write_json(credentials_file, {"username": "campus_admin", "password": password})
         else:

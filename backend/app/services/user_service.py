@@ -25,11 +25,14 @@ class UserService:
         filt: UserGroupFilter | None = None,
         page: int = 1,
         page_size: int = 20,
+        review_status: str | None = None,
     ) -> tuple[list[User], int]:
         """List users with data-scope filtering and optional grouping filters."""
         scope_filter = get_data_scope_filter(db, requester)
 
         stmt = select(User)
+        if review_status:
+            stmt = stmt.where(User.teacher_review_status == review_status)
 
         # Apply data scope
         if "user_id" in scope_filter:
@@ -90,7 +93,7 @@ class UserService:
                 (User.username == body.username) | (User.email == body.email)
             )
         )
-        if existing.scalar_one_or_none():
+        if existing.scalars().first():
             raise ValueError("Username or email already exists")
 
         # Resolve department: use provided department_id, or find/create by name

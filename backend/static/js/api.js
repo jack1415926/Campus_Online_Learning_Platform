@@ -4,9 +4,11 @@ const API_BASE = "/api/v1";
 const api = {
   getToken() { return localStorage.getItem("lms_token") || ""; },
   setToken(token) { localStorage.setItem("lms_token", token); },
-  clearToken() { localStorage.removeItem("lms_token"); },
+  clearToken() { localStorage.removeItem("lms_token"); this._perms = []; this._user = null; },
   // Permission storage
   _perms: null,
+  _user: null,
+  hasRole(role) { return (this._user?.roles || []).includes(role); },
   setPerms(perms) { this._perms = perms || []; },
   hasPerm(perm) { if (!this._perms) return false; if (this._perms.includes("system:config")) return true; return this._perms.includes(perm); },
   hasAnyPerm(...perms) { if (!this._perms) return false; if (this._perms.includes("system:config")) return true; return perms.some(p => this._perms.includes(p)); },
@@ -53,10 +55,15 @@ const api = {
   },
   // Auth
   login(body) { return this.request("POST", "/auth/login", body); },
-  getMe() { return this.request("GET", "/auth/me").then(u => { this.setPerms(u.permissions || []); return u; }); },
+  register(body) { return this.request("POST", "/auth/register", body); },
+  logout() { return this.request("POST", "/auth/logout"); },
+  getMe() { return this.request("GET", "/auth/me").then(u => { this.setPerms(u.permissions || []); this._user=u; return u; }); },
   // Users
   getProfile() { return this.request("GET", "/users/me/profile"); },
   updateProfile(body) { return this.request("PUT", "/users/me/profile", body); },
+  changePassword(body) { return this.request("POST", "/users/me/password", body); },
+  reviewTeacher(id, body) { return this.request("POST", "/users/"+id+"/teacher-review", body); },
+  setUserStatus(id, body) { return this.request("PUT", "/users/"+id+"/status", body); },
   listUsers(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/users" + q); },
   createUser(body) { return this.request("POST", "/users", body); },
   updateUser(id, body) { return this.request("PUT", "/users/" + id, body); },
@@ -73,6 +80,7 @@ const api = {
   deleteTag(id) { return this.request("DELETE", "/tags/" + id); },
   // Media
   listMedia(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/media" + q); },
+  getMedia(id) { return this.request("GET", "/media/" + id); },
   uploadMedia(file, params, onProgress) {
     const fd = new FormData(); fd.append("file", file);
     const q = params ? "?" + new URLSearchParams(params).toString() : "";
@@ -111,7 +119,8 @@ const api = {
   createCourse(body) { return this.request("POST", "/courses", body); },
   updateCourse(id, body) { return this.request("PUT", "/courses/" + id, body); },
   deleteCourse(id) { return this.request("DELETE", "/courses/" + id); },
-  publishCourse(id, action) { return this.request("POST", "/courses/" + id + "/publish", { action }); },
+  publishCourse(id, action, reason="") { return this.request("POST", "/courses/" + id + "/publish", { action, reason }); },
+  joinCourse(id) { return this.request("POST", "/courses/" + id + "/join"); },
   addChapter(courseId, body) { return this.request("POST", "/courses/" + courseId + "/chapters", body); },
   updateChapter(courseId, chId, body) { return this.request("PUT", "/courses/" + courseId + "/chapters/" + chId, body); },
   deleteChapter(courseId, chId) { return this.request("DELETE", "/courses/" + courseId + "/chapters/" + chId); },

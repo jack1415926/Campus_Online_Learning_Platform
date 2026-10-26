@@ -1,19 +1,47 @@
 """Authentication endpoints: register, login, refresh, me."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, status
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_current_user
 from app.auth import AuthError, default_provider
 from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.database import get_db
-from app.models.user import User
-from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserBrief
-from app.services.session_service import create_session, validate_session
+from app.models.user import User, UserStatus
+from app.schemas.auth import LoginRequest, RegisterRequest, RefreshRequest, TokenResponse, UserBrief
+from app.services.session_service import create_session, validate_session, revoke_session
+from app.core.seed import assign_role
+from app.core.campus_access import roles_for
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/register", status_code=201)
+def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    try:
+        user = default_provider.register(db, **body.model_dump(exclude={"role"})).user
+        user.requested_role = body.role
+        if body.role == "student":
+            assign_role(db, user, "student")
+        else:
+            user.teacher_review_status = "pending"
+        db.commit()
+    except AuthError as error:
+        raise HTTPException(error.status_code, error.message)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "用户名或邮箱已存在") from None
+    return {"message": "教师注册成功，请登录查看审核状态" if body.role == "teacher" else "注册成功，请登录"}
+
+
+@router.post("/logout", status_code=204)
+def logout(authorization: str = Header(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    payload = decode_token(authorization.removeprefix("Bearer "))
+    revoke_session(db, payload["sid"])
+    db.commit()
 
 
 def _client_info(request: Request) -> str:
@@ -57,14 +85,14 @@ def refresh_token(body: RefreshRequest, request: Request, db: Session = Depends(
     old_sid = payload.get("sid")
     old_sess = payload.get("sess")
     session, _ = validate_session(db, old_sid, old_sess) if old_sid and old_sess else (None, "invalid")
-    if session:
-        sess = session
-    else:
-        sess = create_session(db, user_id, _client_info(request))
+    user = db.get(User, user_id)
+    if session is None or str(session.user_id) != str(user_id) or user is None or user.status != UserStatus.active:
+        raise HTTPException(401, "登录会话已失效，请重新登录")
+    sess = session
     db.commit()
     return TokenResponse(
-        access_token=create_access_token(user_id, session_id=str(sess.id), session_token=getattr(sess, "_raw_token", "")),
-        refresh_token=create_refresh_token(user_id, session_id=str(sess.id), session_token=getattr(sess, "_raw_token", "")),
+        access_token=create_access_token(user_id, session_id=str(sess.id), session_token=old_sess),
+        refresh_token=create_refresh_token(user_id, session_id=str(sess.id), session_token=old_sess),
     )
 
 
@@ -82,5 +110,8 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
     return UserBrief(
         id=current_user.id, username=current_user.username, email=current_user.email,
         full_name=current_user.full_name, status=current_user.status.value if hasattr(current_user.status, 'value') else str(current_user.status),
-        permissions=perms, roles=role_codes,
+        permissions=perms, roles=sorted(roles_for(db, current_user)),
+        requested_role=current_user.requested_role,
+        teacher_review_status=current_user.teacher_review_status,
+        teacher_review_reason=current_user.teacher_review_reason,
     )

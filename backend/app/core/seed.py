@@ -51,6 +51,9 @@ ROLE_DESCRIPTIONS = {
     "sysadmin": "\u7cfb\u7edf\u914d\u7f6e\u3001SSO\u3001\u65e5\u5fd7\u5ba1\u8ba1\u3001\u6743\u9650\u7ef4\u62a4",
 }
 
+ROLE_NAMES.update(student="学生", teacher="教师", admin="管理员")
+ROLE_DESCRIPTIONS.update(student="浏览课程、加入学习和个人资料", teacher="管理本人课程、提交审核", admin="审核与平台管理")
+
 
 def seed_rbac(db: Session) -> None:
     """Idempotently seed all builtin permissions and roles."""
@@ -85,13 +88,29 @@ def seed_rbac(db: Session) -> None:
             existing_roles[role_code] = role
 
         role = existing_roles[role_code]
+        role.name = ROLE_NAMES[role_code]
+        role.description = ROLE_DESCRIPTIONS[role_code]
         desired_perms = [existing_perms[c] for c in perm_codes if c in existing_perms]
         current_perm_codes = {p.code for p in role.permissions}
         if current_perm_codes != set(perm_codes):
             role.permissions = desired_perms
 
     db.flush()
-    logger.info("RBAC seed complete: %d permissions, %d roles", len(existing_perms), len(existing_roles))
+    # Translate legacy bindings once; old roles no longer grant campus access.
+    for old_code, new_code in {"learner": "student", "manager": "student", "author": "teacher", "sysadmin": "admin"}.items():
+        old_role = existing_roles.get(old_code)
+        if old_role is None:
+            continue
+        for binding in db.execute(select(UserRole).where(UserRole.role_id == old_role.id)).scalars().all():
+            user = db.get(User, binding.user_id)
+            assign_role(db, user, new_code, DataScope.company if new_code == "admin" else DataScope.self)
+            user.requested_role = new_code
+            if new_code == "teacher":
+                user.teacher_review_status = "approved"
+            db.delete(binding)
+        old_role.permissions = []
+    db.flush()
+    logger.info("Campus RBAC seed complete")
 
 
 def assign_role(db: Session, user: User, role_code: str, data_scope: DataScope = DataScope.self) -> None:

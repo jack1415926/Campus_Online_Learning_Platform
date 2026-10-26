@@ -51,4 +51,6 @@ def get_current_user(
     user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
     if not user or user.status != UserStatus.active:
         raise _unauthorized("User not found or inactive")
+    user._login_session = session
+    user._session_token = session_token
     return user

@@ -10,7 +10,7 @@ import enum
 
 from sqlalchemy import (
     CHAR, Boolean, Column, Enum, ForeignKey, Integer, JSON,
-    String, Table, Text, Float,
+    String, Table, Text, Float, UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -89,6 +89,7 @@ class CourseAssignment(Base, UUIDPrimaryKey, TimestampMixin):
     """Assigns a course to users/departments/levels (LM-03)."""
 
     __tablename__ = "course_assignments"
+    __table_args__ = (UniqueConstraint("course_id", "assignment_type", "target_id", name="uq_course_assignment_target"),)
 
     course_id: Mapped[str] = mapped_column(
         CHAR(36), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True

@@ -2,8 +2,10 @@
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from app.schemas.auth import validate_password
 
 
 class UserResponse(BaseModel):
@@ -24,6 +26,11 @@ class UserResponse(BaseModel):
     status: str
     custom_fields: dict | None = None
     roles: list[str] = []
+    requested_role: str = "student"
+    teacher_review_status: str | None = None
+    teacher_review_reason: str | None = None
+    teacher_reviewed_by: str | None = None
+    teacher_reviewed_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -55,7 +62,8 @@ class UserCreateRequest(BaseModel):
     job_level: str | None = None
     position: str | None = None
     custom_fields: dict | None = None
-    role_code: str | None = None
+    role_code: Literal["student", "teacher", "admin"] = "student"
+    _password_limit = field_validator("password")(validate_password)
     data_scope: str = "self"
 
 

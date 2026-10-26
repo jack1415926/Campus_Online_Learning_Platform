@@ -13,8 +13,8 @@ from app.config import settings
 def hash_password(password: str) -> str:
     """Hash a plaintext password using bcrypt."""
     pwd_bytes = password.encode("utf-8")
-    # bcrypt has a 72-byte limit; truncate to avoid ValueError
-    pwd_bytes = pwd_bytes[:72]
+    if len(pwd_bytes) > 72:
+        raise ValueError("Password exceeds bcrypt's 72-byte limit")
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 

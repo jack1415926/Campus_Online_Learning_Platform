@@ -3,6 +3,15 @@
 import traceback
 import uuid
 import os
+from pathlib import Path
+from fastapi.responses import FileResponse
+from jose import JWTError
+from app.core import campus_access as access
+from app.core.media_access import ticket_url
+from app.core.security import decode_token
+from app.services.session_service import validate_session
+from app.models.user import UserStatus
+from app.models.course import Chapter, Course
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from sqlalchemy.orm import Session
@@ -59,6 +68,7 @@ def list_media_categories(requester: User = Depends(get_current_user), db: Sessi
 
 @router.post("/categories", response_model=MediaCategoryResponse, status_code=201)
 def create_media_category(body: MediaCategoryCreate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    access.require_admin(db, requester)
     perms = load_user_permissions(db, requester.id)
     if Perm.COURSE_CREATE not in perms:
         raise HTTPException(403, "Requires permission: course:create")
@@ -69,6 +79,7 @@ def create_media_category(body: MediaCategoryCreate, requester: User = Depends(g
 
 @router.put("/categories/{cat_id}", response_model=MediaCategoryResponse)
 def update_media_category(cat_id: str, body: MediaCategoryUpdate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    access.require_admin(db, requester)
     perms = load_user_permissions(db, requester.id)
     if Perm.COURSE_CREATE not in perms:
         raise HTTPException(403, "Requires permission: course:create")
@@ -82,6 +93,7 @@ def update_media_category(cat_id: str, body: MediaCategoryUpdate, requester: Use
 
 @router.delete("/categories/{cat_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_media_category(cat_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    access.require_admin(db, requester)
     perms = load_user_permissions(db, requester.id)
     if Perm.COURSE_CREATE not in perms:
         raise HTTPException(403, "Requires permission: course:create")
@@ -105,7 +117,9 @@ def list_media(
     filt = MediaAssetListFilter(
         media_type=media_type, category_id=category_id, keyword=keyword
     )
-    assets, total = MediaService.list_assets(db, filt, page, page_size)
+    if not access.roles_for(db, requester) & {"teacher", "admin"}:
+        raise HTTPException(403, "仅教师或管理员可查看素材库")
+    assets, total = MediaService.list_assets(db, filt, page, page_size, uploaded_by=None if "admin" in access.roles_for(db, requester) else str(requester.id))
     return PageResponse(
         items=[MediaAssetResponse.model_validate(a) for a in assets],
         meta=PageMeta(page=page, page_size=page_size, total=total),
@@ -126,7 +140,8 @@ def get_media_url(
     asset = MediaService.get_asset(db, asset_id)
     if not asset:
         raise HTTPException(404, "Media asset not found")
-    url = storage_service.get_url(asset.storage_key)
+    access.readable_asset(db, requester, asset)
+    url = ticket_url(requester, asset)
     return {"id": asset.id, "url": url}
 
 
@@ -139,6 +154,7 @@ def get_media(
     asset = MediaService.get_asset(db, asset_id)
     if not asset:
         raise HTTPException(404, "Media asset not found")
+    access.readable_asset(db, requester, asset)
     return asset
 
 
@@ -157,14 +173,33 @@ async def upload_media(
 
     try:
         mime = file.content_type or "application/octet-stream"
-        media_type = detect_media_type(mime)
 
         ext = ""
         if file.filename and "." in file.filename:
-            ext = file.filename.rsplit(".", 1)[-1]
+            ext = file.filename.rsplit(".", 1)[-1].lower()
+
+        formats = {"jpg": ("image/jpeg", 5), "jpeg": ("image/jpeg", 5), "png": ("image/png", 5),
+                   "mp4": ("video/mp4", 200), "pdf": ("application/pdf", 20),
+                   "docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", 20)}
+        if ext not in formats:
+            raise HTTPException(422, "仅支持 JPG、PNG、MP4、PDF 和 DOCX")
+        mime, max_mb = formats[ext]
+        file.file.seek(0, os.SEEK_END)
+        size = file.file.tell()
+        file.file.seek(0)
+        if size <= 0 or size > max_mb * 1024 * 1024:
+            raise HTTPException(413, f"文件不能为空且不能超过 {max_mb}MB")
+        header = file.file.read(16)
+        file.file.seek(0)
+        valid = {"jpg": header.startswith(b"\xff\xd8\xff"), "jpeg": header.startswith(b"\xff\xd8\xff"),
+                 "png": header.startswith(b"\x89PNG\r\n\x1a\n"), "pdf": header.startswith(b"%PDF-"),
+                 "docx": header.startswith(b"PK\x03\x04"), "mp4": header[4:8] == b"ftyp"}
+        if not valid[ext]:
+            raise HTTPException(422, "文件内容与扩展名不符")
+        media_type = detect_media_type(mime)
 
         # Office 文档不支持在线预览，要求上传者先转成 PDF
-        OFFICE_EXTS = {"doc", "docx", "ppt", "pptx"}
+        OFFICE_EXTS = {"doc", "ppt", "pptx"}
         if ext.lower() in OFFICE_EXTS:
             raise HTTPException(
                 400,
@@ -234,6 +269,7 @@ def update_media(
     asset = MediaService.get_asset(db, asset_id)
     if not asset:
         raise HTTPException(404, "Media asset not found")
+    access.require_asset_owner(db, requester, asset)
     updated = MediaService.update_asset(db, asset, body)
     db.commit()
     return updated
@@ -251,7 +287,35 @@ def delete_media(
     asset = MediaService.get_asset(db, asset_id)
     if not asset:
         raise HTTPException(404, "Media asset not found")
+    access.require_asset_owner(db, requester, asset)
+    if db.scalar(select(Chapter.id).where(Chapter.content_ref_id == asset_id).limit(1)) or db.scalar(select(Course.id).where(Course.cover_image_url == asset.file_url).limit(1)):
+        raise HTTPException(409, "资料已被课程引用，不能删除")
     # 从存储后端删除对象(本地文件 或 OSS)
     storage_service.delete(asset.storage_key)
     MediaService.delete_asset(db, asset)
     db.commit()
+
+
+@router.get("/{asset_id}/content")
+def download_content(asset_id: str, ticket: str | None = None, db: Session = Depends(get_db)):
+    if not ticket:
+        raise HTTPException(401, "需要有效的资料链接")
+    try:
+        claims = decode_token(ticket)
+    except JWTError:
+        raise HTTPException(401, "资料链接已失效，请刷新页面") from None
+    if claims.get("type") != "media" or claims.get("asset_id") != asset_id:
+        raise HTTPException(403, "链接不适用于此资料")
+    session, error = validate_session(db, claims.get("sid"), claims.get("sess"))
+    user = db.get(User, claims.get("sub"))
+    if error or not session or not user or str(session.user_id) != str(user.id) or user.status != UserStatus.active:
+        raise HTTPException(401, "登录会话已失效")
+    asset = db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(404, "资料不存在")
+    access.readable_asset(db, user, asset)
+    base = Path(storage_service.STORAGE_DIR).resolve()
+    path = (base / asset.storage_key).resolve()
+    if not path.is_relative_to(base) or not path.is_file():
+        raise HTTPException(404, "文件不存在")
+    return FileResponse(path, media_type=asset.mime_type, filename=asset.name, content_disposition_type="inline")
