@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园在线学习平台</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.9.1/dist/index.css">
+    <link rel="stylesheet" href="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.css">
+    <style>
+        /* 校园在线 紫色主题：覆盖 Element Plus 主色 */
+        :root {
+            --el-color-primary: #7c3aed;
+            --el-color-primary-light-3: #a06bff;
+            --el-color-primary-light-5: #bc9bff;
+            --el-color-primary-light-7: #d8c5ff;
+            --el-color-primary-light-8: #e6daff;
+            --el-color-primary-light-9: #f3edff;
+            --el-color-primary-dark-2: #6327c8;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei", sans-serif; background: #f5f2fa; }
+        #app { height: 100vh; }
+        .login-container { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%); }
+        .login-card { width: 420px; padding: 40px; background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(76,29,149,0.3); }
+        .login-title { text-align: center; font-size: 24px; color: #303133; margin-bottom: 8px; }
+        .login-subtitle { text-align: center; font-size: 14px; color: #909399; margin-bottom: 32px; }
+        .main-layout { height: 100vh; }
+        .sidebar-logo { height: 60px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: bold; background: #2b1657; }
+        .el-aside { background: #1e0f3f; overflow-x: hidden; }
+        .el-menu { border-right: none; }
+        .el-menu--vertical .el-menu-item.is-active,
+        .el-menu--collapse .el-menu-item.is-active,
+        .el-menu-item.is-active { color: #fff; background: linear-gradient(90deg, #7c3aed, #a06bff); }
+        .el-menu-item:hover { background: rgba(124,58,237,0.18) !important; color: #fff !important; }
+        .header-bar { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #e8e8e8; padding: 0 20px; height: 60px; }
+        .page-content { padding: 20px; overflow-y: auto; height: calc(100vh - 60px); }
+        .stat-card { text-align: center; }
+        .stat-card .num { font-size: 28px; font-weight: bold; color: #7c3aed; }
+        .stat-card .label { font-size: 13px; color: #909399; margin-top: 4px; }
+        .course-card { cursor: pointer; transition: transform 0.2s; }
+        .course-card:hover { transform: translateY(-4px); }
+        .course-cover { height: 140px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 36px; }
+        .chapter-item { padding: 12px 16px; border: 1px solid #ebeef5; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .chapter-item:hover { border-color: #7c3aed; }
+        .chapter-item.active { border-color: #7c3aed; background: #f3edff; }
+        .exam-question { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 16px; }
+    </style>
+<style>
+.video-no-seek video::-webkit-media-controls-timeline { display: none !important; }
+.video-no-seek video::-webkit-media-controls-current-time-display { display: none !important; }
+.video-no-seek video::-webkit-media-controls-time-remaining-display { display: none !important; }
+.video-no-seek video::-webkit-media-controls-playback-rate-button { display: none !important; }
+.video-no-seek video { playback-rate: 1 !important; }
+</style>
+<style>
+/* 消息角标位置：固定到按钮/菜单项右上角 */
+.badge-bell { position: relative; display: inline-flex; align-items: center; }
+.badge-bell .el-badge__content { top: 6px; right: 0; transform: translate(50%, -50%); }
+.badge-side { position: relative; }
+.badge-side .el-badge__content { top: 50%; right: 0; transform: translate(50%, -50%); }
+</style>
+<style>
+/* ===== Mobile Responsive (max-width:768px) ===== */
+@media (max-width: 768px) {
+  .el-col { max-width: 100% !important; flex: 0 0 100% !important; }
+  .el-dialog { width: 92% !important; margin: 5vh auto !important; }
+  .el-dialog__body { padding: 15px !important; }
+  div[style*="space-between"] { flex-wrap: wrap !important; gap: 8px !important; justify-content: flex-start !important; }
+  .header-bar { padding: 0 12px !important; height: 56px !important; }
+  .page-content { padding: 12px !important; }
+  .login-card { width: 90% !important; max-width: 420px; padding: 24px !important; }
+  .stat-card .num { font-size: 22px !important; }
+  .course-cover { height: 100px !important; font-size: 28px !important; }
+  .chapter-item { flex-direction: column !important; align-items: stretch !important; }
+  .chapter-item > div { width: 100% !important; margin-bottom: 6px; }
+  .exam-question { padding: 14px !important; margin-bottom: 12px !important; }
+  .el-descriptions__table { display: block !important; }
+  .el-descriptions__table tbody { display: block !important; }
+  .el-descriptions__table tr { display: block !important; }
+  .el-descriptions__cell { display: block !important; width: 100% !important; }
+  .el-pagination { flex-wrap: wrap; justify-content: center; }
+  .el-radio, .el-checkbox { min-height: 36px; }
+  .video-no-seek video { max-height: 240px !important; }
+  .el-page-header { padding: 0; }
+  .el-page-header__content { font-size: 14px; }
+  .el-table { width: 100% !important; }
+  .el-drawer__body { padding: 0 !important; height: 100%; }
+  /* Sticky page header for exam countdown on mobile */
+  .el-page-header { position: sticky; top: 0; z-index: 10; background: #fff; }
+  /* iframe (PDF viewer): shorter on mobile */
+  iframe { height: 400px !important; }
+  /* el-radio-button group: wrap on narrow screens */
+  .el-radio-group { flex-wrap: wrap; }
+  /* el-card header toolbars: wrap */
+  .el-card__header div[style*="space-between"] { flex-wrap: wrap !important; gap: 8px !important; }
+  /* el-form-item: reduce margin on mobile */
+  .el-form-item { margin-bottom: 14px !important; }
+  /* el-divider: smaller margin */
+  .el-divider { margin: 12px 0 !important; }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+  .el-col-6 { max-width: 50% !important; flex: 0 0 50% !important; }
+  .el-col-3 { max-width: 50% !important; flex: 0 0 50% !important; }
+  .el-col-4 { max-width: 50% !important; flex: 0 0 50% !important; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/element-plus@2.9.1/dist/index.full.min.js"></script>
+<script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+<script src="https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.min.js"></script>
+<script src="/static/js/api.js?v=20260831b"></script>
+<script src="/static/js/app.js?v=20260831b"></script>
+</body>
+</html>

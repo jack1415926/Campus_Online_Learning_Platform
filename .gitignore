@@ -1,0 +1,40 @@
+# Reference project: local reuse source only, never publish this directory.
+/nov_lms/
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+
+# Python environments and generated files
+.venv/
+.venv*/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Local databases, uploads, backups and verification output
+/backend/storage/
+/.local/
+/.runtime/
+/backups/
+*.sqlite
+*.sqlite3
+*.sql
+*.log
+
+# Frontend/tooling and editor files
+node_modules/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
