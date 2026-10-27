@@ -232,6 +232,10 @@ def get_resume_position(course_id: str, requester: User = Depends(get_current_us
 def reset_course_progress(course_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Reset all learning records for a course, allowing re-learning."""
     access.require_admin(db, requester)
+    from app.models.certificate import Certificate
+    db.scalar(select(Course).where(Course.id == course_id).with_for_update())
+    if db.scalar(select(Certificate.id).where(Certificate.course_id == course_id, Certificate.user_id == requester.id)):
+        raise HTTPException(409, "已领取证书，不能重置学习记录")
     LearningRecordService.reset_progress(db, requester.id, course_id)
     db.commit()
     return {"message": "Progress reset"}

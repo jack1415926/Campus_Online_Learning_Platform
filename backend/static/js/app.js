@@ -1,6 +1,7 @@
 // LMS Main Application - Vue 3 SPA (Complete)
 const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, shallowRef } = Vue;
 const { ElMessage, ElMessageBox } = ElementPlus;
+const platformState = reactive({platform_name:'校园在线学习平台',registration_open:true});
 function navigate(path) { window.location.hash = "#" + path; }
 
 // Global reactive unread-count state shared between the app header/menu badges
@@ -21,14 +22,14 @@ const TYPE_MAP = { video: "视频", document: "文档", text: "文字", image: "
 // ===== Login =====
 const LoginPage = {
   template: `<div class="login-container"><div class="login-card">
-    <div class="login-title">校园在线学习平台</div><p style="text-align:center;color:#909399">课程 · 学习 · 交流</p>
+    <div class="login-title">{{platform.platform_name}}</div><p style="text-align:center;color:#909399">课程 · 学习 · 交流</p>
     <el-form v-if="mode==='login'" label-position="top" @submit.prevent="doLogin">
       <el-form-item label="用户名 / 邮箱"><el-input v-model="lf.username" placeholder="请输入用户名或邮箱" /></el-form-item>
       <el-form-item label="密码"><el-input v-model="lf.password" type="password" placeholder="请输入密码" show-password /></el-form-item>
       <el-button type="primary" native-type="submit" :loading="loading" style="width:100%">登录</el-button>
-      <el-button text @click="mode='register'" style="margin-top:12px">注册新账号</el-button>
+      <el-button v-if="platform.registration_open" text @click="mode='register'" style="margin-top:12px">注册新账号</el-button><p v-else style="margin-top:12px">平台暂未开放注册</p>
     </el-form>
-    <el-form v-else label-position="top" @submit.prevent="doRegister">
+    <el-form v-else-if="platform.registration_open" label-position="top" @submit.prevent="doRegister">
       <el-form-item label="用户名"><el-input v-model="rf.username" placeholder="至少3个字符" /></el-form-item>
       <el-form-item label="姓名"><el-input v-model="rf.full_name" placeholder="请输入姓名" /></el-form-item>
       <el-form-item label="邮箱"><el-input v-model="rf.email" placeholder="请输入邮箱" /></el-form-item>
@@ -48,7 +49,7 @@ const LoginPage = {
 
 // ===== Dashboard =====
 const DashboardPage = {
-  template: `<div><h2 style="margin-bottom:16px">欢迎来到校园在线学习平台</h2>
+  template: `<div><h2 style="margin-bottom:16px">欢迎来到{{platform.platform_name}}</h2>
     <el-alert v-if="!api.hasPerm('course:read')" title="教师账号尚未通过审核，请到个人中心查看审核状态和原因" type="info" :closable="false" />
     <el-card v-else><template #header>最近课程</template><el-table :data="courses">
       <el-table-column prop="title" label="课程名称" /><el-table-column prop="instructor" label="任课教师" />
@@ -122,7 +123,7 @@ const CourseListPage = {
 
 // ===== Course Detail with REAL learning =====
 const CourseDetailPage = {
-  components: { HomeworkPanel, CampusExamPanel },
+  components: { HomeworkPanel, CampusExamPanel, CommunicationPanel, CertificatePanel },
   props: ["id"],
   template: `
   <div v-if="course">
@@ -271,6 +272,8 @@ const CourseDetailPage = {
     </el-row>
     <homework-panel :course="course" :key="course.id"/>
     <campus-exam-panel :course="course" :key="course.id"/>
+    <communication-panel :course="course" :key="course.id"/>
+    <certificate-panel :course="course" :key="course.id"/>
 
     <el-dialog v-model="showEdit" title="编辑课程" width="500px">
       <el-form :model="editForm" label-position="top">
@@ -380,7 +383,7 @@ const CourseDetailPage = {
       if (!url || !window.pdfjsLib) return;
       pdfLoading.value = true;
       try {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.worker.min.js";
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "/static/vendor/pdfjs-2.16.105/pdf.worker.min.js";
         const task = window.pdfjsLib.getDocument(url);
         pdfDoc.value = await task.promise;
         pdfTotalPages.value = pdfDoc.value.numPages;
@@ -2198,7 +2201,7 @@ const NotificationPage = {
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h2>消息中心</h2>
-      <el-button @click="markAllRead">全部已读</el-button>
+      <div><el-button @click="refresh">刷新消息</el-button><el-button @click="markAllRead">全部已读</el-button></div>
     </div>
     <el-card shadow="never">
       <div v-for="n in items" :key="n.id" style="padding:16px;border-bottom:1px solid #ebeef5;cursor:pointer" @click="showDetail(n)">
@@ -2210,18 +2213,22 @@ const NotificationPage = {
       </div>
       <el-empty v-if="items.length===0" description="暂无消息" />
     </el-card>
+    <el-pagination v-if="total>20" v-model:current-page="page" :total="total" :page-size="20" @current-change="load" layout="prev,pager,next"/>
     <el-dialog v-model="detailVisible" :title="detail.title" width="500px">
       <div style="line-height:1.8">{{ detail.body }}</div>
       <div style="margin-top:12px;color:#909399;font-size:12px">{{ fmtDateTime(detail.created_at) }}</div>
+      <el-button v-if="detail.extra_data?.course_id" type="primary" style="margin-top:12px" @click="follow">打开对应课程内容</el-button>
     </el-dialog>
   </div>`,
   setup() {
-    const items = ref([]); const detailVisible = ref(false); const detail = ref({});
-    const load = async () => { try { const r = await api.listNotifications({page:1,page_size:50}); items.value=r.items||[]; } catch(e) { ElMessage.error(e.message); } };
+    const items = ref([]); const detailVisible = ref(false); const detail = ref({}); const page=ref(1),total=ref(0);
+    const load = async () => { try { const r = await api.listNotifications({page:page.value,page_size:20}); items.value=r.items||[];total.value=r.meta.total; } catch(e) { ElMessage.error(e.message); } };
+    const refresh=async()=>{await load();await loadUnread();};
+    const follow=()=>{const d=detail.value.extra_data||{};let target='course/'+encodeURIComponent(d.course_id);if(d.topic_id)target+='?topic='+encodeURIComponent(d.topic_id);else if(d.peer_id)target+='?peer='+encodeURIComponent(d.peer_id);detailVisible.value=false;navigate(target);};
     const markAllRead = async () => { try { await api.markAllRead(); ElMessage.success("已全部标记为已读"); load(); loadUnread(); } catch(e) { ElMessage.error(e.message); } };
     const showDetail = (n) => { detail.value = n; detailVisible.value = true; if(!n.is_read) { api.markRead([n.id]).then(()=>{ load(); loadUnread(); }).catch(()=>{}); } };
     onMounted(load);
-    return { items, detailVisible, detail, markAllRead, showDetail };
+    return { page,total,load,refresh,follow,items, detailVisible, detail, markAllRead, showDetail };
   }
 };
 
@@ -2259,12 +2266,13 @@ const App = {
       {key:'media',label:'素材库',icon:'FolderOpened',perm:'course:create'},
       {key:'question-banks',label:'题库管理',icon:'Document',perm:'exam:create'},
       {key:'categories',label:'课程分类',icon:'Files',perm:'system:config'},
+      {key:'settings',label:'基础设置',icon:'Setting',role:'admin'},
       {key:'users',label:'用户与教师审核',icon:'UserFilled',perm:'user:read'},
       {key:'notifications',label:'消息中心',icon:'Bell'},
       {key:'profile',label:'个人中心',icon:'User'},
     ];
     const menuItems=computed(()=>{userInfo.value;return ALL_MENU_ITEMS.filter(m=>(!m.perm||api.hasPerm(m.perm))&&(!m.role||api.hasRole(m.role)));});
-    const parseRoute = () => { const hash = window.location.hash.replace("#","")||"dashboard"; const parts = hash.split("/"); currentPage.value=parts[0]; currentParam.value=parts[1]||null; if(api.isLoggedIn()) loadUnread(); };
+    const parseRoute = () => { const hash = window.location.hash.replace("#","")||"dashboard"; const parts = hash.split('?')[0].split("/"); currentPage.value=parts[0]; currentParam.value=parts[1]||null; if(api.isLoggedIn()) loadUnread(); };
     const logout = async (msg) => { try { await api.logout(); } catch(e) {} api.clearToken(); if (msg) { try { ElMessage.warning(msg); } catch(e){} } window.location.hash="#login"; window.location.reload(); };
     // Session timeout auto-logout: check JWT exp periodically (2h timeout)
     const sessionCheckTimer = ref(null);
@@ -2282,7 +2290,7 @@ const App = {
         } catch(e) {}
       }, 30000); // check every 30s
     };
-    const componentMap={login:LoginPage,dashboard:DashboardPage,'my-courses':MyCoursesPage,courses:CourseListPage,course:CourseDetailPage,media:MediaPage,'question-banks':QuestionBankPage,exam:ExamTakePage,categories:CategoryPage,notifications:NotificationPage,users:UserManagePage,profile:ProfilePage};
+    const componentMap={login:LoginPage,dashboard:DashboardPage,'my-courses':MyCoursesPage,courses:CourseListPage,course:CourseDetailPage,media:MediaPage,'question-banks':QuestionBankPage,exam:ExamTakePage,categories:CategoryPage,notifications:NotificationPage,users:UserManagePage,profile:ProfilePage,settings:PlatformSettingsPage};
     const currentComponent=computed(()=>{if(!api.isLoggedIn())return LoginPage;if(!userInfo.value)return null;const allowed=currentPage.value==='course'?api.hasPerm('course:read'):currentPage.value==='exam'?api.hasPerm('exam:read'):menuItems.value.some(m=>m.key===currentPage.value);return allowed?(componentMap[currentPage.value]||DashboardPage):DashboardPage;});
     onMounted(async () => { parseRoute(); window.addEventListener("hashchange",()=>parseRoute()); if(api.isLoggedIn()) { try { userInfo.value=await api.getMe(); loadUnread(); startSessionTimer(); } catch(e) { api.clearToken(); } } });
     const drawerVisible = ref(false);
@@ -2294,7 +2302,7 @@ const App = {
   <el-container v-else class="main-layout">
     <el-drawer v-if="isMobile" v-model="drawerVisible" direction="ltr" :size="240" :with-header="false">
       <div style="background:#1e0f3f;height:100%">
-        <div class="sidebar-logo">校园在线</div>
+        <div class="sidebar-logo">{{platform.platform_name}}</div>
         <el-scrollbar style="height:calc(100vh - 60px)">
           <el-menu :default-active="currentPage" background-color="#1e0f3f" text-color="#ffffffa6" active-text-color="#fff" @select="handleMenuSelect">
             <el-menu-item v-for="m in menuItems" :key="m.key" :index="m.key"><el-icon><component :is="m.icon" /></el-icon><span>{{ m.label }}</span><el-badge v-if="m.key==='notifications'&&unreadCount>0" class="badge-side" :value="unreadCount" position="top-right" style="margin-left:8px" /></el-menu-item>
@@ -2303,7 +2311,7 @@ const App = {
       </div>
     </el-drawer>
     <el-aside v-if="!isMobile" :width="sidebarCollapsed?'64px':'200px'">
-      <div class="sidebar-logo">{{ sidebarCollapsed?'学':'校园在线学习平台' }}</div>
+      <div class="sidebar-logo" :title="platform.platform_name" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">{{ sidebarCollapsed?'学':platform.platform_name }}</div>
       <el-scrollbar style="height:calc(100vh - 60px)">
         <el-menu :default-active="currentPage" :collapse="sidebarCollapsed" background-color="#1e0f3f" text-color="#ffffffa6" active-text-color="#fff" @select="navigate">
           <el-menu-item v-for="m in menuItems" :key="m.key" :index="m.key"><el-icon><component :is="m.icon" /></el-icon><span>{{ m.label }}</span><el-badge v-if="m.key==='notifications'&&unreadCount>0" class="badge-side" :value="unreadCount" position="top-right" style="margin-left:8px" /></el-menu-item>
@@ -2328,6 +2336,7 @@ try {
   app.use(ElementPlus);
   app.config.globalProperties.navigate = navigate;
   app.config.globalProperties.api = api;
+  app.config.globalProperties.platform = platformState;
   app.config.globalProperties.$isMobile = isMobile;
   app.config.globalProperties.$isTablet = isTablet;
   // 将 ISO 时间字符串格式化为本地时间 yyyy-MM-dd HH:mm:ss（24 小时制）
@@ -2341,6 +2350,7 @@ try {
   };
   if (typeof ElementPlusIconsVue !== "undefined") { for (const [k,c] of Object.entries(ElementPlusIconsVue)) { app.component(k,c); } }
   app.mount("#app");
+  api.getPlatformSettings().then(value=>{Object.assign(platformState,value);document.title=value.platform_name;}).catch(e=>ElMessage.error('平台设置读取失败：'+e.message));
 } catch(e) {
   document.getElementById("app").innerHTML = '<div style="padding:40px;color:red;font-family:monospace">App Error: ' + e.message + "</div>";
 }

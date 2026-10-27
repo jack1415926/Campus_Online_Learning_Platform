@@ -59,6 +59,7 @@ class CourseCreate(CourseBase):
 
 
 class CourseUpdate(BaseModel):
+    certificate_exam_id: str | None = Field(None, min_length=36, max_length=36)
     title: str | None = Field(None, max_length=255)
     description: str | None = None
     cover_image_url: str | None = Field(None, max_length=1000)
@@ -71,6 +72,7 @@ class CourseUpdate(BaseModel):
 
 
 class CourseResponse(CourseBase):
+    certificate_exam_id: str | None = None
     cover_preview_url: str | None = None
     id: str
     status: CourseStatus

@@ -54,8 +54,22 @@ const api = {
     return json;
   },
   // Auth
+  getPlatformSettings(){return this.request('GET','/platform-settings');},
+  savePlatformSettings(body){return this.request('PUT','/platform-settings',body);},
+  certificateStatus(courseId){return this.request('GET',`/courses/${courseId}/certificate`);},
+  claimCertificate(courseId){return this.request('POST',`/courses/${courseId}/certificate`);},
+  courseCertificates(courseId,page=1){return this.request('GET',`/courses/${courseId}/certificates?page=${page}`);},
   login(body) { return this.request("POST", "/auth/login", body); },
   register(body) { return this.request("POST", "/auth/register", body); },
+  listTopics(courseId,page=1){return this.request('GET',`/courses/${courseId}/discussions?page=${page}`);},
+  createTopic(courseId,body){return this.request('POST',`/courses/${courseId}/discussions`,body);},
+  getTopic(courseId,id,page=1){return this.request('GET',`/courses/${courseId}/discussions/${id}?page=${page}`);},
+  replyTopic(courseId,id,body){return this.request('POST',`/courses/${courseId}/discussions/${id}/replies`,body);},
+  deleteTopic(courseId,id){return this.request('DELETE',`/courses/${courseId}/discussions/${id}`);},
+  deleteReply(courseId,id,replyId){return this.request('DELETE',`/courses/${courseId}/discussions/${id}/replies/${replyId}`);},
+  privateContacts(courseId,page=1){return this.request('GET',`/courses/${courseId}/private-contacts?page=${page}`);},
+  conversation(courseId,peerId,page=1){return this.request('GET',`/courses/${courseId}/messages?peer_id=${encodeURIComponent(peerId)}&page=${page}`);},
+  sendMessage(courseId,body){return this.request('POST',`/courses/${courseId}/messages`,body);},
   logout() { return this.request("POST", "/auth/logout"); },
   getMe() { return this.request("GET", "/auth/me").then(u => { this.setPerms(u.permissions || []); this._user=u; return u; }); },
   // Users

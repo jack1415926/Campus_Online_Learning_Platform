@@ -179,6 +179,15 @@ def load_record(db, user, record_id, *, grade=False):
 
 
 def grade(db, record, body, grader_id):
+    if record.status == ExamStatus.graded:
+        # A retry of the same save is harmless; final results cannot be rescored.
+        saved = {a["question_id"]: a for a in record.answers}
+        if all(a.question_id in saved and saved[a.question_id]["graded"]
+               and saved[a.question_id]["score"] == a.score
+               and (saved[a.question_id].get("grader_comment") or "") == (a.grader_comment or "")
+               for a in body.answers):
+            return
+        raise HTTPException(409, "最终成绩已发布，不能重新评分")
     if record.status not in (ExamStatus.submitted, ExamStatus.graded):
         raise HTTPException(409, "只能批改已提交答卷")
     questions = {q["id"]: q for q in record.question_snapshot}

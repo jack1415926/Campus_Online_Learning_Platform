@@ -1,6 +1,9 @@
 """Import all models so Alembic and SQLAlchemy can discover them."""
 
 from app.models.base import Base
+from app.models.platform import PlatformSettings
+from app.models.certificate import Certificate
+from app.models.communication import DiscussionTopic, DiscussionReply, PrivateMessage
 from app.models.homework import Homework, HomeworkSubmission
 from app.models.org import Organization
 from app.models.dictionary import JobLevel, Position

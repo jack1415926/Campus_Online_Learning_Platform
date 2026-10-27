@@ -8,6 +8,8 @@ from app.models.learning import CourseAssignment, AssignmentType, LearningRecord
 from app.models.exam import Exam, ExamRecord
 from app.models.media import MediaAsset
 from app.models.homework import Homework, HomeworkSubmission
+from app.models.communication import DiscussionTopic, PrivateMessage
+from app.models.certificate import Certificate
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -55,7 +57,16 @@ def _course_to_response(course: Course, db, user) -> dict:
     return data
 
 
+def _validate_certificate_exam(db, course_id, exam_id):
+    exam = db.get(Exam, exam_id)
+    if not exam or str(exam.course_id) != str(course_id) or not exam.paper_snapshot or exam.status != "active":
+        raise HTTPException(422, "证书须指定本课程内已配置的有效考试")
+
+
 def _validate_resources(db, requester, body, course_id=None, chapter=None):
+    certificate_exam_id = getattr(body, "certificate_exam_id", None)
+    if certificate_exam_id:
+        _validate_certificate_exam(db, course_id, certificate_exam_id)
     chapters = list(getattr(body, "chapters", []))
     if hasattr(body, "content_type"):
         chapters.append(body)
@@ -198,6 +209,8 @@ def publish_action(
     if body.action != "submit_review":
         access.require_admin(db, requester)
     try:
+        if body.action in ("submit_review", "publish") and course.certificate_exam_id:
+            _validate_certificate_exam(db, course_id, course.certificate_exam_id)
         if body.action == "submit_review":
             if not course.chapters or not all((ch.text_content or "").strip() if ch.content_type == "text" else bool(ch.content_ref_id) for ch in course.chapters):
                 raise ValueError("请至少添加一个有效章节，再提交审核")
@@ -293,6 +306,11 @@ def delete_chapter(
 
 
 def _ensure_no_activity(db, course_id):
+    if db.scalar(select(Certificate.id).where(Certificate.course_id == course_id).limit(1)):
+        raise HTTPException(409, "课程已颁发证书，请使用归档保留历史")
+    for model in (DiscussionTopic,PrivateMessage):
+        if db.scalar(select(model.id).where(model.course_id==course_id).limit(1)):
+            raise HTTPException(409,"课程已有讨论或私信，请使用归档保留历史")
     if db.scalar(select(HomeworkSubmission.id).join(Homework, Homework.id == HomeworkSubmission.homework_id).where(Homework.course_id == course_id).limit(1)):
         raise HTTPException(409, "课程已有作业提交，请使用归档保留历史")
     for model in (CourseAssignment, LearningRecord, Exam):

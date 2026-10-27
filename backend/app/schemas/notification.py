@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.notification import (
     NotificationChannel, NotificationStatus, NotificationType, TriggerMode,
@@ -40,8 +40,16 @@ class NotificationResponse(BaseModel):
     status: NotificationStatus
     is_read: bool
     sent_at: str | None = None
+    extra_data: dict[str,str] | None = None
     created_at: datetime
     model_config = {"from_attributes": True}
+
+    @field_validator("extra_data",mode="before")
+    @classmethod
+    def routing_context(cls,value):
+        if not isinstance(value,dict):
+            return None
+        return {key:value[key] for key in ("course_id","topic_id","peer_id") if isinstance(value.get(key),str)}
 
 
 class SendNotificationRequest(BaseModel):

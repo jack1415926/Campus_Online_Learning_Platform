@@ -38,9 +38,10 @@ const CampusExamPanel = {
           <p v-for="o in q.options||[]" :key="o.key">{{o.key}}. {{o.text}}</p>
           <p style="white-space:pre-wrap">学生答案：{{format(answerFor(q.id)?.answer)}}</p><p v-if="q.correct_answer!==undefined" style="white-space:pre-wrap">{{q.type==='short_answer'?'参考答案':'正确答案'}}：{{format(q.correct_answer)}}</p>
           <p v-if="answerFor(q.id)?.graded">得分：{{answerFor(q.id).score}}　评语：{{answerFor(q.id).grader_comment||'无'}}</p><p v-else>待批改</p>
-          <div v-if="course.can_manage&&q.type==='short_answer'&&['submitted','graded'].includes(detail.status)"><el-input-number v-model="grading[q.id].score" :min="0" :max="q.score" :aria-label="'给简答题评分：'+q.content"/><el-input v-model="grading[q.id].grader_comment" type="textarea" placeholder="教师评语"/></div>
+          <div v-if="course.can_manage&&q.type==='short_answer'&&detail.status==='submitted'"><el-input-number v-model="grading[q.id].score" :min="0" :max="q.score" :aria-label="'给简答题评分：'+q.content"/><el-input v-model="grading[q.id].grader_comment" type="textarea" placeholder="教师评语"/></div>
         </div>
-        <el-button v-if="course.can_manage&&['submitted','graded'].includes(detail.status)&&detail.questions.some(q=>q.type==='short_answer')" type="primary" :loading="busy" @click="saveGrade">保存批改</el-button>
+        <p v-if="detail.status==='graded'">最终成绩已发布，不再重新评分。</p>
+        <el-button v-if="course.can_manage&&detail.status==='submitted'&&detail.questions.some(q=>q.type==='short_answer')" type="primary" :loading="busy" @click="saveGrade">保存批改</el-button>
       </template>
     </el-dialog>
   </el-card>`,

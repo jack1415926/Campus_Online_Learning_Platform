@@ -249,7 +249,9 @@ def update_exam(exam_id: str, body: ExamCreate, requester: User = Depends(get_cu
 @router.delete("/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_exam(exam_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _check_perm(db, requester, Perm.EXAM_CREATE)
-    exam, _ = campus.load_exam(db, requester, exam_id, manage=True, edit=True, write=True)
+    exam, course = campus.load_exam(db, requester, exam_id, manage=True, edit=True, write=True)
+    if course.certificate_exam_id == exam_id:
+        raise HTTPException(409, "该考试已指定为证书考核，请先修改证书设置")
     if db.scalar(select(ExamRecord.id).where(ExamRecord.exam_id == exam_id).limit(1)):
         raise HTTPException(409, "已有答卷，不能删除考试")
     ExamService.delete_exam(db, exam)

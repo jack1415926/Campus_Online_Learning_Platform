@@ -82,6 +82,7 @@ class Course(Base, UUIDPrimaryKey, TimestampMixin):
     )
     version: Mapped[int] = mapped_column(Integer, default=1)
     completion_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    certificate_exam_id: Mapped[str | None] = mapped_column(CHAR(36), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     review_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_by: Mapped[str | None] = mapped_column(CHAR(36), nullable=True)

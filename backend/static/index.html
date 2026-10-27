@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>校园在线学习平台</title>
-    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.9.1/dist/index.css">
-    <link rel="stylesheet" href="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.css">
+    <link rel="stylesheet" href="/static/vendor/element-plus-2.9.1/index.css">
     <style>
         /* 校园在线 紫色主题：覆盖 Element Plus 主色 */
         :root {
@@ -97,16 +96,28 @@
   .el-col-4 { max-width: 50% !important; flex: 0 0 50% !important; }
 }
 </style>
+<style>
+@media print {
+  body { background: white !important; }
+  body * { visibility: hidden !important; }
+  .certificate-sheet, .certificate-sheet * { visibility: visible !important; }
+  .certificate-sheet { position: fixed !important; top: 0; left: 0; width: 100%; }
+  .el-overlay { background: transparent !important; overflow: visible !important; }
+}
+</style>
 </head>
 <body>
 <div id="app"></div>
-<script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
-<script src="https://unpkg.com/element-plus@2.9.1/dist/index.full.min.js"></script>
-<script src="https://unpkg.com/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
-<script src="https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.min.js"></script>
-<script src="/static/js/api.js?v=20261027-stage5"></script>
+<script src="/static/vendor/vue-3.5.13/vue.global.prod.js"></script>
+<script src="/static/vendor/element-plus-2.9.1/index.full.min.js"></script>
+<script src="/static/vendor/icons-vue-2.3.1/index.iife.min.js"></script>
+<script src="/static/vendor/pdfjs-2.16.105/pdf.min.js"></script>
+<script src="/static/js/api.js?v=20261028-stage7"></script>
 <script src="/static/js/homework.js?v=20261027-stage5"></script>
-<script src="/static/js/exams.js?v=20261027-stage5"></script>
-<script src="/static/js/app.js?v=20261027-stage5"></script>
+<script src="/static/js/exams.js?v=20261028-stage7a"></script>
+<script src="/static/js/communication.js?v=20261027-stage6"></script>
+<script src="/static/js/certificates.js?v=20261028-stage7a"></script>
+<script src="/static/js/settings.js?v=20261028-stage7"></script>
+<script src="/static/js/app.js?v=20261028-stage7"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ from app.auth import AuthError, default_provider
 from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.database import get_db
 from app.models.user import User, UserStatus
+from app.models.platform import PlatformSettings
 from app.schemas.auth import LoginRequest, RegisterRequest, RefreshRequest, TokenResponse, UserBrief
 from app.services.session_service import create_session, validate_session, revoke_session
 from app.core.seed import assign_role
@@ -21,6 +22,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", status_code=201)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    if not db.get(PlatformSettings, 1).registration_open:
+        raise HTTPException(403, "平台暂未开放注册")
     try:
         user = default_provider.register(db, **body.model_dump(exclude={"role"})).user
         user.requested_role = body.role
