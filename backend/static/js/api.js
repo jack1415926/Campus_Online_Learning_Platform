@@ -137,7 +137,19 @@ const api = {
   updateProgress(body) { return this.request("POST", "/learning/progress", body); },
   getCourseProgress(courseId) { return this.request("GET", "/learning/progress/" + courseId); },
   resetCourseProgress(courseId) { return this.request("POST", "/learning/reset/" + courseId); },
-  getMyRecords() { return this.request("GET", "/learning/records"); },
+  getMyRecords(courseId) { return this.request("GET", "/learning/records" + (courseId ? "?course_id=" + encodeURIComponent(courseId) : "")); },
+  listHomeworks(courseId, page=1) { return this.request("GET", `/courses/${courseId}/homeworks?page=${page}`); },
+  saveHomework(courseId, id, body) { return this.request(id ? "PUT" : "POST", `/courses/${courseId}/homeworks`+(id?`/${id}`:""), body); },
+  deleteHomework(courseId, id) { return this.request("DELETE", `/courses/${courseId}/homeworks/${id}`); },
+  submitHomework(courseId, id, form) { return this.request("PUT", `/courses/${courseId}/homeworks/${id}/submission`, form, true); },
+  homeworkSubmissions(courseId, id, page=1) { return this.request("GET", `/courses/${courseId}/homeworks/${id}/submissions?page=${page}`); },
+  gradeHomework(courseId, id, submissionId, body) { return this.request("POST", `/courses/${courseId}/homeworks/${id}/submissions/${submissionId}/grade`, body); },
+  courseStudents(courseId, page=1) { return this.request("GET", `/learning/courses/${courseId}/students?page=${page}`); },
+  async downloadHomework(courseId, id, submission) {
+    const response=await fetch(`${API_BASE}/courses/${courseId}/homeworks/${id}/submissions/${submission.id}/attachment`,{headers:{Authorization:"Bearer "+this.getToken()}});
+    if(!response.ok){const body=await response.json();throw new Error(body.detail||"下载失败");}
+    const url=URL.createObjectURL(await response.blob());const link=document.createElement('a');link.href=url;link.download=submission.attachment_name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  },
   getResume(courseId) { return this.request("GET", "/learning/resume/" + courseId); },
   // Notifications
   listNotifications(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/notifications" + q); },
@@ -151,6 +163,7 @@ const api = {
   // Exams
   listQuestions(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/exams/questions" + q); },
   createQuestion(body) { return this.request("POST", "/exams/questions", body); },
+  updateQuestion(id, body) { return this.request("PUT", "/exams/questions/"+id, body); },
   batchImportQuestions(items) { return this.request("POST", "/exams/questions/batch", items); },
   deleteQuestion(id) { return this.request("DELETE", "/exams/questions/" + id); },
   // Question Banks
@@ -167,11 +180,14 @@ const api = {
   listExams(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/exams" + q); },
   getExam(id) { return this.request("GET", "/exams/" + id); },
   createExam(body) { return this.request("POST", "/exams", body); },
+  saveExam(id, body) { return this.request(id?"PUT":"POST", "/exams"+(id?"/"+id:""), body); },
+  examRecords(id, page=1) { return this.request("GET", `/exams/${id}/records?page=${page}`); },
+  saveExamDraft(id, body) { return this.request("PUT", `/exams/records/${id}/draft`, body); },
   deleteExam(id) { return this.request("DELETE", "/exams/" + id); },
   startExam(id) { return this.request("POST", "/exams/" + id + "/start"); },
   submitExam(recordId, body) { return this.request("POST", "/exams/records/" + recordId + "/submit", body); },
   getExamRecord(id) { return this.request("GET", "/exams/records/" + id); },
-  getMyExamRecords() { return this.request("GET", "/exams/records/my"); },
+  getMyExamRecords(examId) { return this.request("GET", "/exams/records/my"+(examId?"?exam_id="+encodeURIComponent(examId):"")); },
   getWrongQuestions(params) {
     if (!params) return this.request("GET", "/exams/wrong-questions");
     const q = new URLSearchParams();

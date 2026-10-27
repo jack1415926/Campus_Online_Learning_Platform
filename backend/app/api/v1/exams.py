@@ -1,15 +1,20 @@
 """Exam API (EX-01 through EX-07)."""
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import select, func
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.permissions import Perm
-from app.core.rbac import load_user_permissions
+from app.core.rbac import load_user_permissions, require_permission
 from app.database import get_db
-from app.models.exam import Exam, ExamRecord
+from app.models.exam import Exam, ExamRecord, ExamStatus, Question
+from app.models.course import Course, CourseStatus
+from app.core import campus_access as access
+from app.services import campus_exam_service as campus
 from app.models.user import User
 from app.schemas.common import PageMeta, PageResponse
 from app.schemas.exam import (
@@ -36,20 +41,36 @@ def list_questions(question_type: str | None = Query(None), knowledge_point: str
                    question_bank_id: str | None = Query(None),
                    page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=500),
                    requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    qs, total = QuestionService.list_questions(db, question_type, knowledge_point, page, page_size, question_bank_id)
+    _check_perm(db, requester, Perm.EXAM_CREATE)
+    campus.bank_access(db, requester, question_bank_id)
+    qs, total = QuestionService.list_questions(db, question_type, knowledge_point, page, page_size, question_bank_id, creator_id=None if "admin" in access.roles_for(db,requester) else str(requester.id))
     return PageResponse(items=qs, meta=PageMeta(page=page, page_size=page_size, total=total))
 
 
 @router.post("/questions", response_model=QuestionResponse, status_code=201)
 def create_question(body: QuestionCreate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _check_perm(db, requester, Perm.EXAM_CREATE)
+    campus.bank_access(db, requester, body.question_bank_id)
     q = QuestionService.create_question(db, body, requester.id)
+    db.commit()
+    return q
+
+
+@router.put("/questions/{q_id}", response_model=QuestionResponse)
+def update_question(q_id: str, body: QuestionCreate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _check_perm(db, requester, Perm.EXAM_CREATE)
+    q = campus.owner(db, requester, db.scalar(select(Question).where(Question.id == q_id).with_for_update()))
+    campus.bank_access(db, requester, body.question_bank_id)
+    for key, value in body.model_dump().items():
+        setattr(q, key, value)
+    q.is_objective = body.question_type.value != "short_answer"
     db.commit()
     return q
 
 
 @router.post("/questions/batch", response_model=list[QuestionResponse], status_code=201)
 def batch_import_questions(items: list[QuestionImportItem], requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    access.require_admin(db, requester)
     _check_perm(db, requester, Perm.EXAM_CREATE)
     qs = QuestionService.batch_import(db, items, requester.id)
     db.commit()
@@ -63,6 +84,9 @@ def delete_question(q_id: str, requester: User = Depends(get_current_user), db: 
     q = db.execute(select(Question).where(Question.id == q_id)).scalar_one_or_none()
     if not q:
         raise HTTPException(404, "Question not found")
+    campus.owner(db, requester, q)
+    if any(q_id in (ids or []) for ids in db.scalars(select(Exam.question_ids).where(Exam.question_mode == "manual"))):
+        raise HTTPException(409, "题目已被试卷引用，请保留题目或先修改草稿试卷")
     QuestionService.delete_question(db, q)
     db.commit()
 
@@ -71,7 +95,8 @@ def delete_question(q_id: str, requester: User = Depends(get_current_user), db: 
 
 @router.get("/question-banks", response_model=list[QuestionBankResponse])
 def list_question_banks(requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    results = QuestionBankService.list_banks(db)
+    _check_perm(db, requester, Perm.EXAM_CREATE)
+    results = QuestionBankService.list_banks(db, creator_id=None if "admin" in access.roles_for(db,requester) else str(requester.id))
     items = []
     for bank, count in results:
         item = QuestionBankResponse.model_validate(bank)
@@ -94,6 +119,7 @@ def update_question_bank(bank_id: str, body: QuestionBankUpdate, requester: User
     bank = QuestionBankService.get_bank(db, bank_id)
     if not bank:
         raise HTTPException(404, "Question bank not found")
+    campus.owner(db, requester, bank)
     bank = QuestionBankService.update_bank(db, bank, body)
     db.commit()
     return QuestionBankResponse.model_validate(bank)
@@ -105,6 +131,9 @@ def delete_question_bank(bank_id: str, requester: User = Depends(get_current_use
     bank = QuestionBankService.get_bank(db, bank_id)
     if not bank:
         raise HTTPException(404, "Question bank not found")
+    campus.owner(db, requester, bank)
+    if db.scalar(select(Question.id).where(Question.question_bank_id == bank_id).limit(1)):
+        raise HTTPException(409, "题库内仍有题目，不能删除")
     QuestionBankService.delete_bank(db, bank)
     db.commit()
 
@@ -112,6 +141,7 @@ def delete_question_bank(bank_id: str, requester: User = Depends(get_current_use
 @router.post("/question-banks/{bank_id}/import")
 async def import_questions(bank_id: str, file: UploadFile = File(...),
                            requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    access.require_admin(db, requester)
     _check_perm(db, requester, Perm.EXAM_CREATE)
     bank = QuestionBankService.get_bank(db, bank_id)
     if not bank:
@@ -129,6 +159,7 @@ async def import_questions(bank_id: str, file: UploadFile = File(...),
 
 @router.get("/question-banks/template")
 def download_template(requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    access.require_admin(db, requester)
     import io
     from openpyxl import Workbook
 
@@ -157,11 +188,27 @@ def download_template(requester: User = Depends(get_current_user), db: Session =
 
 # --- Exams (EX-03, EX-04, EX-05) ---
 
+def _exam_response(exam):
+    response = ExamResponse.model_validate(exam)
+    response.question_scores = {q["id"]: q["score"] for q in exam.paper_snapshot or []}
+    return response
+
 @router.get("", response_model=PageResponse[ExamResponse])
 def list_exams(course_id: str | None = Query(None), page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=500),
                requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    exams, total = ExamService.list_exams(db, course_id, page, page_size)
-    return PageResponse(items=exams, meta=PageMeta(page=page, page_size=page_size, total=total))
+    _check_perm(db, requester, Perm.EXAM_READ)
+    stmt = select(Exam).join(Course, Course.id == Exam.course_id)
+    if course_id:
+        access.get_course(db, requester, course_id, learn=True)
+        stmt = stmt.where(Exam.course_id == course_id)
+    if "admin" not in access.roles_for(db, requester):
+        if "teacher" in access.roles_for(db, requester):
+            stmt = stmt.where(Course.created_by == requester.id)
+        else:
+            stmt = stmt.where(Exam.course_id.in_(access.enrolled_ids(db, requester)), Course.status.in_([CourseStatus.published, CourseStatus.archived]), Exam.paper_snapshot.is_not(None))
+    total = db.scalar(select(func.count()).select_from(stmt.subquery()))
+    exams = db.scalars(stmt.order_by(Exam.created_at, Exam.id).offset((page-1)*page_size).limit(page_size)).all()
+    return PageResponse(items=[_exam_response(e) for e in exams], meta=PageMeta(page=page, page_size=page_size, total=total))
 
 
 @router.get("/wrong-questions")
@@ -172,31 +219,39 @@ def get_wrong_questions(
     db: Session = Depends(get_db),
 ):
     """Return the user's wrong questions across exam attempts (错题集)."""
+    access.require_admin(db, requester)
     return ExamService.get_wrong_questions(db, requester.id, exam_id, question_bank_id)
 
 
 @router.get("/{exam_id}", response_model=ExamResponse)
 def get_exam(exam_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    exam = ExamService.get_exam(db, exam_id)
-    if not exam:
-        raise HTTPException(404, "Exam not found")
-    return exam
+    exam, _ = campus.load_exam(db, requester, exam_id)
+    return _exam_response(exam)
 
 
 @router.post("", response_model=ExamResponse, status_code=201)
-def create_exam(body: ExamCreate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_exam(body: ExamCreate, requester: User = Depends(require_permission(Perm.EXAM_CREATE)), db: Session = Depends(get_db)):
     _check_perm(db, requester, Perm.EXAM_CREATE)
-    exam = ExamService.create_exam(db, body, requester.id)
+    exam = campus.write_exam(db, requester, body)
     db.commit()
-    return exam
+    return _exam_response(exam)
+
+
+@router.put("/{exam_id}", response_model=ExamResponse)
+def update_exam(exam_id: str, body: ExamCreate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _check_perm(db, requester, Perm.EXAM_CREATE)
+    exam, _ = campus.load_exam(db, requester, exam_id, manage=True, edit=True, write=True)
+    campus.write_exam(db, requester, body, exam)
+    db.commit()
+    return _exam_response(exam)
 
 
 @router.delete("/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_exam(exam_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _check_perm(db, requester, Perm.EXAM_CREATE)
-    exam = ExamService.get_exam(db, exam_id)
-    if not exam:
-        raise HTTPException(404, "Exam not found")
+    exam, _ = campus.load_exam(db, requester, exam_id, manage=True, edit=True, write=True)
+    if db.scalar(select(ExamRecord.id).where(ExamRecord.exam_id == exam_id).limit(1)):
+        raise HTTPException(409, "已有答卷，不能删除考试")
     ExamService.delete_exam(db, exam)
     db.commit()
 
@@ -206,57 +261,88 @@ def delete_exam(exam_id: str, requester: User = Depends(get_current_user), db: S
 @router.post("/{exam_id}/start")
 def start_exam(exam_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Start an exam attempt, returns questions."""
-    try:
-        record, questions = ExamService.start_exam(db, requester.id, exam_id)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    record = campus.start(db, requester, exam_id)
     db.commit()
-    return {"record_id": record.id, "questions": questions,
-            "duration_minutes": ExamService.get_exam(db, exam_id).duration_minutes}
+    return {**campus.view(record), "record_id": str(record.id)}
 
 
 @router.post("/records/{record_id}/submit", response_model=ExamRecordResponse)
 def submit_exam(record_id: str, body: SubmitExamRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Submit exam answers for auto-grading (EX-06)."""
-    record = ExamService.get_record(db, record_id)
-    if not record or record.user_id != requester.id:
-        raise HTTPException(404, "Exam record not found")
-    exam = ExamService.get_exam(db, record.exam_id)
-    if not exam:
-        raise HTTPException(404, "Exam not found")
-    record = ExamService.submit_exam(db, record, exam, body)
+    record, exam, course = campus.load_record(db, requester, record_id)
+    if str(record.user_id) != str(requester.id) or "student" not in access.roles_for(db, requester):
+        raise HTTPException(403, "只能提交本人答卷")
+    if record.status == ExamStatus.in_progress and course.status != CourseStatus.published:
+        raise HTTPException(409, "归档课程不接受新交卷")
+    campus.submit(db, record, body.answers)
     db.commit()
-    return record
+    return campus.view(record)
+
+
+@router.put("/records/{record_id}/draft")
+def save_draft(record_id: str, body: SubmitExamRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    record, _, course = campus.load_record(db, requester, record_id)
+    if str(record.user_id) != str(requester.id) or "student" not in access.roles_for(db, requester):
+        raise HTTPException(403, "只能保存本人答案")
+    if record.status != ExamStatus.in_progress or course.status != CourseStatus.published:
+        db.commit()
+        raise HTTPException(409, "考试已结束或课程已归档")
+    campus.validate_answers(record.question_snapshot, body.answers)
+    record.draft_answers = [a.model_dump() for a in body.answers]
+    db.commit()
+    return {"saved": True, "deadline_at": record.deadline_at}
 
 
 @router.post("/records/{record_id}/grade", response_model=ExamRecordResponse)
 def manual_grade(record_id: str, body: GradeExamRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Manual grade subjective questions (EX-06)."""
     _check_perm(db, requester, Perm.EXAM_GRADE)
-    record = ExamService.get_record(db, record_id)
-    if not record:
-        raise HTTPException(404, "Exam record not found")
-    record = ExamService.manual_grade(db, record, body, requester.id)
+    record, _, _ = campus.load_record(db, requester, record_id, grade=True)
+    campus.grade(db, record, body, requester.id)
     db.commit()
-    return record
+    return campus.view(record, manager=True)
 
 
 # --- Records & Analysis (EX-07) ---
 
 @router.get("/records/my", response_model=list[ExamRecordResponse])
 def get_my_records(exam_id: str | None = Query(None), requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return ExamService.get_user_records(db, requester.id, exam_id)
+    _check_perm(db, requester, Perm.EXAM_READ)
+    records = ExamService.get_user_records(db, requester.id, exam_id)
+    for record in records:
+        if record.status == ExamStatus.in_progress and record.question_snapshot and record.deadline_at and campus.now() >= datetime.fromisoformat(record.deadline_at):
+            campus.load_record(db, requester, str(record.id))
+            db.commit()
+    return records
 
 
 @router.get("/records/{record_id}")
 def get_record(record_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    record = ExamService.get_record(db, record_id)
-    if not record:
-        raise HTTPException(404, "Record not found")
-    return ExamService.enrich_record(db, record)
+    record, _, course = campus.load_record(db, requester, record_id)
+    response = campus.view(record, manager=access.can_manage(db, requester, course))
+    db.commit()
+    return response
+
+
+@router.get("/{exam_id}/records")
+def exam_records(exam_id: str, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.models.user import User as Student
+    exam, _ = campus.load_exam(db, requester, exam_id, manage=True, write=True)
+    stmt = select(ExamRecord, Student.full_name).join(Student, Student.id == ExamRecord.user_id).where(ExamRecord.exam_id == exam_id)
+    total = db.scalar(select(func.count()).select_from(stmt.subquery()))
+    items = []
+    for record, name in db.execute(stmt.order_by(ExamRecord.created_at.desc(),ExamRecord.id).offset((page-1)*page_size).limit(page_size).with_for_update().execution_options(populate_existing=True)):
+        if record.question_snapshot and record.deadline_at:
+            campus.expire(db, record)
+        response = ExamRecordResponse.model_validate(record).model_dump()
+        response["full_name"] = name
+        items.append(response)
+    db.commit()
+    return {"items": items, "meta": {"total": total, "page": page, "page_size": page_size}}
 
 
 @router.get("/{exam_id}/analysis", response_model=ExamResultAnalysis)
 def get_exam_analysis(exam_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """EX-07: exam result analysis."""
+    access.require_admin(db, requester)
     return ExamService.get_exam_analysis(db, exam_id)

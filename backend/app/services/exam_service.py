@@ -1,6 +1,5 @@
 """Exam service (EX-01 through EX-07)."""
 
-from datetime import datetime, timezone
 from collections import Counter
 
 from sqlalchemy import func, select
@@ -8,9 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.models.exam import Exam, ExamRecord, ExamStatus, Question, QuestionType
 from app.schemas.exam import (
-    ExamCreate, GradeExamRequest, QuestionBankCreate, QuestionBankUpdate,
+    QuestionBankCreate, QuestionBankUpdate,
     QuestionCreate, QuestionImportItem,
-    SubmitExamRequest,
 )
 from app.models.question_bank import QuestionBank
 
@@ -18,8 +16,10 @@ from app.models.question_bank import QuestionBank
 class QuestionService:
 
     @staticmethod
-    def list_questions(db: Session, question_type=None, knowledge_point=None, page=1, page_size=20, question_bank_id=None):
+    def list_questions(db: Session, question_type=None, knowledge_point=None, page=1, page_size=20, question_bank_id=None, creator_id=None):
         stmt = select(Question)
+        if creator_id is not None:
+            stmt = stmt.where(Question.created_by == creator_id)
         if question_type:
             stmt = stmt.where(Question.question_type == question_type)
         if knowledge_point:
@@ -84,272 +84,14 @@ class ExamService:
     def get_exam(db: Session, exam_id: str):
         return db.execute(select(Exam).where(Exam.id == exam_id)).scalar_one_or_none()
 
-    @staticmethod
-    def create_exam(db: Session, body: ExamCreate, creator_id: str):
-        question_ids = body.question_ids
-        question_mode = body.question_mode
-        # Random mode: convert random_rules into question_ids dict
-        if body.question_mode == "random" and body.random_rules:
-            rules = [r.model_dump() for r in body.random_rules if r.count > 0]
-            if rules:
-                question_ids = {"strategy": "random", "rules": rules}
-            else:
-                question_ids = None
-        exam = Exam(
-            title=body.title, description=body.description, course_id=body.course_id,
-            question_ids=question_ids, question_mode=question_mode,
-            duration_minutes=body.duration_minutes,
-            pass_score=body.pass_score, max_attempts=body.max_attempts,
-            shuffle_questions=body.shuffle_questions, shuffle_options=body.shuffle_options,
-            screen_lock=body.screen_lock,
-            start_time=body.start_time, end_time=body.end_time, created_by=creator_id,
-        )
-        db.add(exam)
-        db.flush()
-        return exam
 
     @staticmethod
     def delete_exam(db: Session, exam: Exam):
         db.delete(exam)
         db.flush()
 
-    @staticmethod
-    def start_exam(db: Session, user_id: str, exam_id: str):
-        """Start a new exam attempt (EX-03)."""
-        exam = ExamService.get_exam(db, exam_id)
-        if not exam:
-            raise ValueError("Exam not found")
 
-        # Check attempt count
-        count = db.execute(
-            select(func.count()).select_from(
-                select(ExamRecord).where(
-                    ExamRecord.user_id == user_id, ExamRecord.exam_id == exam_id
-                ).subquery()
-            )
-        ).scalar() or 0
 
-        if count >= exam.max_attempts:
-            raise ValueError(f"Max attempts ({exam.max_attempts}) reached")
-
-        record = ExamRecord(
-            user_id=user_id, exam_id=exam_id,
-            status=ExamStatus.in_progress,
-            started_at=datetime.now(timezone.utc).isoformat(),
-            attempt_number=count + 1,
-        )
-        db.add(record)
-        db.flush()
-
-        # Get questions for the exam (EX-04: support random per-bank)
-        q_ids = exam.question_ids or []
-        questions = []
-        import random as _rand
-        if isinstance(q_ids, list):
-            qs = db.execute(select(Question).where(Question.id.in_(q_ids))).scalars().all()
-            questions = [{"id": str(q.id), "type": q.question_type.value, "content": q.content,
-                          "options": q.options, "score": q.score} for q in qs]
-        elif isinstance(q_ids, dict) and q_ids.get("strategy") == "random":
-            rules = q_ids.get("rules")
-            if rules:
-                # Random per question bank: pick `count` random questions from each bank
-                for rule in rules:
-                    bank_id = rule.get("question_bank_id")
-                    count = int(rule.get("count", 5))
-                    stmt = select(Question)
-                    if bank_id:
-                        stmt = stmt.where(Question.question_bank_id == bank_id)
-                    qs = list(db.execute(stmt).scalars().all())
-                    count = min(count, len(qs))
-                    selected = _rand.sample(qs, count) if count < len(qs) else qs
-                    questions.extend(
-                        {"id": str(q.id), "type": q.question_type.value, "content": q.content,
-                         "options": q.options, "score": q.score} for q in selected
-                    )
-            else:
-                # Legacy random config: {"strategy":"random","count":N,"types":[...]}
-                stmt = select(Question)
-                if q_ids.get("types"):
-                    stmt = stmt.where(Question.question_type.in_(q_ids["types"]))
-                qs = list(db.execute(stmt).scalars().all())
-                count_q = min(q_ids.get("count", 10), len(qs))
-                selected = _rand.sample(qs, count_q) if count_q < len(qs) else qs
-                questions = [{"id": str(q.id), "type": q.question_type.value, "content": q.content,
-                              "options": q.options, "score": q.score} for q in selected]
-            if exam.shuffle_questions:
-                _rand.shuffle(questions)
-
-        if exam.shuffle_questions and isinstance(q_ids, list):
-            import random
-            random.shuffle(questions)
-
-        # Shuffle options for choice questions if enabled
-        option_map = {}
-        if exam.shuffle_options:
-            import random as _rnd
-            for q_dict in questions:
-                if q_dict["type"] in ("single_choice", "multiple_choice") and q_dict.get("options"):
-                    original_opts = list(q_dict["options"])
-                    _rnd.shuffle(original_opts)
-                    new_opts = []
-                    mapping = {}
-                    for idx, opt in enumerate(original_opts):
-                        new_key = chr(65 + idx)
-                        new_opts.append({"key": new_key, "text": opt["text"]})
-                        mapping[new_key] = opt.get("key", chr(65 + idx))
-                    q_dict["options"] = new_opts
-                    option_map[q_dict["id"]] = mapping
-
-        # Store question IDs and option mapping in the record
-        record_meta = {}
-        if isinstance(q_ids, dict) and q_ids.get("strategy") == "random":
-            record_meta["question_ids"] = [q["id"] for q in questions]
-        elif isinstance(q_ids, list):
-            record_meta["question_ids"] = list(q_ids)
-        if option_map:
-            record_meta["option_map"] = option_map
-            # Persist option map separately so it survives submission (answers get overwritten)
-            record.shuffle_map = option_map
-        if record_meta:
-            record.answers = record_meta
-
-        return record, questions
-
-    @staticmethod
-    def submit_exam(db: Session, record: ExamRecord, exam: Exam, body: SubmitExamRequest):
-        """Submit and auto-grade objective questions (EX-06)."""
-        now = datetime.now(timezone.utc).isoformat()
-
-        # Extract option_map from record (persisted separately so it survives answer overwrite)
-        option_map = {}
-        if record.shuffle_map:
-            option_map = record.shuffle_map
-        elif record.answers and isinstance(record.answers, dict):
-            option_map = record.answers.get("option_map", {})
-
-        # Get question IDs from exam config
-        q_ids = []
-        if isinstance(exam.question_ids, list):
-            q_ids = exam.question_ids
-        elif isinstance(exam.question_ids, dict) and exam.question_ids.get("strategy") == "random":
-            if record.answers and isinstance(record.answers, dict):
-                q_ids = record.answers.get("question_ids", [])
-
-        # Fetch questions
-        questions = {}
-        if q_ids:
-            qs = db.execute(select(Question).where(Question.id.in_(q_ids))).scalars().all()
-            questions = {str(q.id): q for q in qs}
-
-        total_score = 0.0
-        max_score = 0.0
-        graded_answers = []
-
-        for ans in body.answers:
-            q = questions.get(ans.question_id)
-            if not q:
-                continue
-            max_score += q.score
-            answer_data = {
-                "question_id": ans.question_id,
-                "answer": ans.answer,
-                "score": 0.0,
-                "is_correct": None,
-                "grader_comment": None,
-            }
-
-            if q.is_objective and q.correct_answer:
-                correct = q.correct_answer
-                if isinstance(correct, dict):
-                    correct = str(correct.get("value", ""))
-
-                if q.question_type in (QuestionType.single_choice, QuestionType.true_false):
-                    raw_ans = str(ans.answer).strip() if ans.answer else ""
-                    q_map = option_map.get(ans.question_id, {})
-                    orig_ans = q_map.get(raw_ans, raw_ans) if q_map else raw_ans
-                    is_correct = orig_ans == str(correct).strip() if ans.answer else False
-                    # Store the answer in the same (original) coordinate as correct_answer
-                    answer_data["answer"] = orig_ans
-                elif q.question_type == QuestionType.multiple_choice:
-                    q_map = option_map.get(ans.question_id, {})
-                    if isinstance(ans.answer, list):
-                        raw_list = ans.answer
-                    elif ans.answer:
-                        raw_list = [ans.answer]
-                    else:
-                        raw_list = []
-                    if q_map:
-                        orig_list = [q_map.get(str(a), str(a)) for a in raw_list]
-                    else:
-                        orig_list = [str(a) for a in raw_list]
-                    ans_set = set(orig_list)
-                    correct_set = set(correct) if isinstance(correct, list) else set([str(correct)]) if correct else set()
-                    is_correct = ans_set == correct_set
-                    # Store the answer in the same (original) coordinate as correct_answer
-                    answer_data["answer"] = sorted(orig_list)
-                elif q.question_type == QuestionType.fill_blank:
-                    ans_list = ans.answer if isinstance(ans.answer, list) else [ans.answer]
-                    correct_list = correct if isinstance(correct, list) else [correct]
-                    is_correct = (len(ans_list) == len(correct_list) and
-                                  all(str(a).strip().lower() == str(c).strip().lower()
-                                      for a, c in zip(ans_list, correct_list)))
-                else:
-                    is_correct = False
-
-                answer_data["is_correct"] = is_correct
-                answer_data["score"] = q.score if is_correct else 0.0
-                total_score += answer_data["score"]
-            else:
-                answer_data["is_correct"] = None
-
-            graded_answers.append(answer_data)
-
-        has_subjective = any(a["is_correct"] is None for a in graded_answers)
-
-        # Use ORM assignment (no direct SQL)
-        record.answers = graded_answers
-        record.total_score = total_score
-        record.max_score = max_score
-        record.submitted_at = now
-        record.time_spent_seconds = body.time_spent_seconds
-
-        if has_subjective:
-            record.status = ExamStatus.submitted
-        else:
-            record.status = ExamStatus.graded
-            record.graded_at = now
-            record.is_pass = (total_score / max_score * 100) >= exam.pass_score if max_score > 0 else False
-
-        db.flush()
-        return record
-
-    @staticmethod
-    def manual_grade(db: Session, record: ExamRecord, body: GradeExamRequest, grader_id: str):
-        """Manual grade subjective questions (EX-06)."""
-        now = datetime.now(timezone.utc).isoformat()
-        answers = record.answers or []
-        grade_map = {g.question_id: g for g in body.answers}
-
-        for ans in answers:
-            if ans.get("is_correct") is None and ans["question_id"] in grade_map:
-                g = grade_map[ans["question_id"]]
-                old_score = ans.get("score", 0.0)
-                ans["score"] = g.score
-                ans["is_correct"] = g.score > 0
-                ans["grader_comment"] = g.grader_comment
-                record.total_score = (record.total_score or 0) - old_score + g.score
-
-        record.answers = answers
-        record.status = ExamStatus.graded
-        record.graded_at = now
-        record.graded_by = grader_id
-
-        exam = ExamService.get_exam(db, record.exam_id)
-        if exam:
-            record.is_pass = ((record.total_score or 0) / record.max_score * 100) >= exam.pass_score if record.max_score else False
-
-        db.flush()
-        return record
 
     @staticmethod
     def get_user_records(db: Session, user_id: str, exam_id=None):
@@ -381,70 +123,6 @@ class ExamService:
             return mapping.get(correct_answer, correct_answer)
         return correct_answer
 
-    @staticmethod
-    def enrich_record(db: Session, record: ExamRecord) -> dict:
-        """Enrich an exam record's answers with question content and correct answers."""
-        data = {
-            "id": record.id,
-            "user_id": record.user_id,
-            "exam_id": record.exam_id,
-            "answers": record.answers,
-            "total_score": record.total_score,
-            "max_score": record.max_score,
-            "is_pass": record.is_pass,
-            "status": record.status,
-            "started_at": record.started_at,
-            "submitted_at": record.submitted_at,
-            "attempt_number": record.attempt_number,
-            "time_spent_seconds": record.time_spent_seconds,
-            "created_at": record.created_at,
-        }
-        exam = db.execute(select(Exam).where(Exam.id == record.exam_id)).scalar_one_or_none()
-        if exam:
-            data["exam_title"] = exam.title
-        answers = record.answers or []
-        shuffle_map = record.shuffle_map or {}
-        enriched = []
-        for a in answers:
-            qid = a.get("question_id") if isinstance(a, dict) else None
-            item = dict(a) if isinstance(a, dict) else {"answer": a}
-            if qid:
-                q = db.execute(select(Question).where(Question.id == qid)).scalar_one_or_none()
-                if q:
-                    item["question_content"] = q.content
-                    item["question_type"] = q.question_type.value if hasattr(q.question_type, "value") else q.question_type
-                    item["correct_answer"] = q.correct_answer
-                    item["explanation"] = q.explanation
-                    item["options"] = q.options
-                    # Reconstruct the option order as shown during the attempt
-                    mapping = shuffle_map.get(str(qid))
-                    if mapping:
-                        display_options = []
-                        reverse_mapping = {}  # {original_key: display_key}
-                        for display_key, original_key in mapping.items():
-                            reverse_mapping[original_key] = display_key
-                            opt = next((o for o in (q.options or []) if o.get("key") == original_key), None)
-                            if opt:
-                                display_options.append({"key": display_key, "text": opt["text"]})
-                        if display_options:
-                            item["options"] = display_options
-                        # Map the answer and correct answer(s) to the display key(s) seen by the user
-                        # Use reverse_mapping: correct_answer and answer are stored in original keys,
-                        # we need to map them to display keys shown to the user
-                        item["correct_answer"] = ExamService._map_correct_answer(reverse_mapping, q.correct_answer)
-                        if "answer" in item:
-                            item["answer"] = ExamService._map_correct_answer(reverse_mapping, item["answer"])
-                    else:
-                        # No shuffle_map available (old records where option_map was lost
-                        # when record.answers was overwritten).  When the answer is correct,
-                        # the stored answer (in display keys) is equivalent to the correct
-                        # answer (in original keys).  Show the correct answer so the displayed
-                        # keys match the displayed (original-order) options.
-                        if item.get("is_correct") is True:
-                            item["answer"] = q.correct_answer
-            enriched.append(item)
-        data["answers"] = enriched
-        return data
 
     @staticmethod
     def get_wrong_questions(db: Session, user_id: str, exam_id: str | None = None,
@@ -567,8 +245,10 @@ class ExamService:
 class QuestionBankService:
 
     @staticmethod
-    def list_banks(db: Session):
+    def list_banks(db: Session, creator_id=None):
         stmt = select(QuestionBank).order_by(QuestionBank.created_at.desc())
+        if creator_id is not None:
+            stmt = stmt.where(QuestionBank.created_by == creator_id)
         banks = list(db.execute(stmt).scalars().all())
         # Count questions per bank
         result = []

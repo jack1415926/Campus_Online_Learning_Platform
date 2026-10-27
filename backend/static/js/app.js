@@ -122,6 +122,7 @@ const CourseListPage = {
 
 // ===== Course Detail with REAL learning =====
 const CourseDetailPage = {
+  components: { HomeworkPanel, CampusExamPanel },
   props: ["id"],
   template: `
   <div v-if="course">
@@ -152,8 +153,8 @@ const CourseDetailPage = {
               <el-button size="small" v-if="course.can_edit" @click="openEditCh(activeChapter)">编辑章节</el-button>
             </div>
           </template>
-          <div v-if="activeChapter.content_type==='video'" class="video-no-seek">
-            <video v-if="videoUrl" :src="videoUrl" controls style="width:100%;max-height:400px" @timeupdate="onVideoTime" @seeking="onVideoSeeking" @ended="onVideoEnded" @loadedmetadata="onVideoLoaded" @ratechange="onVideoRateChange"></video>
+          <div v-if="activeChapter.content_type==='video'" class="course-video">
+            <video v-if="videoUrl" :key="activeChapter.id" :src="videoUrl" controls style="width:100%;max-height:400px" @timeupdate="onVideoTime" @pause="saveVideo" @ended="onVideoEnded" @loadedmetadata="onVideoLoaded"></video>
             <div v-else style="padding:40px;text-align:center;color:#909399">
               <el-icon size="48"><VideoPlay /></el-icon>
               <p v-if="activeChapter.content_ref_id">正在加载视频...</p>
@@ -268,6 +269,8 @@ const CourseDetailPage = {
         </el-card>
       </el-col>
     </el-row>
+    <homework-panel :course="course" :key="course.id"/>
+    <campus-exam-panel :course="course" :key="course.id"/>
 
     <el-dialog v-model="showEdit" title="编辑课程" width="500px">
       <el-form :model="editForm" label-position="top">
@@ -344,6 +347,7 @@ const CourseDetailPage = {
     const course = ref(null); const progress = ref({}); const activeChapter = ref(null);
     const showEdit = ref(false); const showAddCh = ref(false); const showEditCh = ref(false);
     const canManage = ref(false); const completedChapters = ref(new Set()); let courseStartTime = null;
+    const chapterRecords = ref([]); let videoElement=null, lastVideoSave=0, videoSaving=false;
     const editForm = reactive({ title:"", description:"", difficulty:"beginner", estimated_minutes:0, instructor:"" });
     const chForm = reactive({ title:"", content_type:"video", text_content:"", content_ref_id:"", estimated_minutes:10, is_required:true, sort_order:0 });
     const editChForm = reactive({ title:"", content_type:"video", text_content:"", content_ref_id:"", estimated_minutes:0, is_required:true });
@@ -424,20 +428,23 @@ const CourseDetailPage = {
 
     const load = async () => {
       try {
+        await saveVideo();videoElement=null;
         course.value = await api.getCourse(props.id);
         if(course.value.can_learn){try { progress.value = await api.getCourseProgress(props.id); } catch(e) {}}
         canManage.value = course.value.can_manage;
-        if (progress.value && progress.value.completed_chapters > 0) {
-          const recs = await api.getMyRecords(props.id);
-          completedChapters.value = new Set(recs.filter(r => r.status === "completed").map(r => r.chapter_id));
-        }
+        chapterRecords.value = course.value.can_learn ? await api.getMyRecords(props.id) : [];
+        completedChapters.value = new Set(chapterRecords.value.filter(r => r.status === "completed").map(r => r.chapter_id));
         courseStartTime = Date.now();
         Object.assign(editForm, { title: course.value.title, description: course.value.description||"", difficulty: course.value.difficulty, estimated_minutes: course.value.estimated_minutes, instructor: course.value.instructor||"", cover_image_url:course.value.cover_image_url||"" });
-        if (course.value.chapters && course.value.chapters.length > 0) selectChapter(course.value.chapters[0]);
+        if (course.value.chapters && course.value.chapters.length > 0) {
+          const resume=course.value.can_learn?await api.getResume(props.id):null;
+          await selectChapter(course.value.chapters.find(ch=>ch.id===resume?.chapter_id)||course.value.chapters[0]);
+        }
       } catch(e) { ElMessage.error(e.message); }
     };
 
     const selectChapter = async (ch) => {
+      await saveVideo(); videoElement=null; lastVideoSave=0; courseStartTime=Date.now();
       activeChapter.value = ch; videoUrl.value = ""; docUrl.value = ""; imageUrl.value = ""; learnSeconds = 0; maxWatchedTime = 0; videoCompleted.value = false; videoDuration.value = 0;
       if (ch.content_ref_id) {
         try {
@@ -455,19 +462,21 @@ const CourseDetailPage = {
     };
 
     const onVideoTime = (e) => {
-      const t = e.target.currentTime;
-      if (t > maxWatchedTime) maxWatchedTime = t;
-      learnSeconds = Math.floor(t);
+      videoElement=e.target;
+      if(Date.now()-lastVideoSave>10000) saveVideo();
     };
-    const onVideoSeeking = (e) => {
-      if (e.target.currentTime > maxWatchedTime + 1) { e.target.currentTime = maxWatchedTime; }
+    const saveVideo = async () => {
+      if(videoSaving||!videoElement||activeChapter.value?.content_type!=='video'||!course.value?.can_learn||course.value.status!=='published')return;
+      const ch=activeChapter.value, position=videoElement.currentTime;
+      videoSaving=true;lastVideoSave=Date.now();
+      try{const record=await api.updateProgress({course_id:course.value.id,chapter_id:ch.id,progress_percent:0,resume_position:{video_time:position}});chapterRecords.value=chapterRecords.value.filter(r=>r.chapter_id!==ch.id).concat(record);}catch(e){ElMessage.error('播放位置保存失败：'+e.message);}finally{videoSaving=false;}
     };
-    const onVideoLoaded = (e) => { videoDuration.value = e.target.duration || 0; e.target.playbackRate = 1; };
-    const onVideoRateChange = (e) => { if (e.target.playbackRate > 1) e.target.playbackRate = 1; };
+    const onVideoLoaded = (e) => {videoElement=e.target;videoDuration.value=e.target.duration||0;const saved=chapterRecords.value.find(r=>r.chapter_id===activeChapter.value.id)?.resume_position?.video_time||0;if(saved>0&&Number.isFinite(e.target.duration))e.target.currentTime=Math.min(saved,e.target.duration);};
     const completeChapter = async (ch) => {
       try {
         const elapsedSeconds = courseStartTime ? Math.round((Date.now() - courseStartTime) / 1000) : learnSeconds;
-        await api.updateProgress({ course_id: props.id, chapter_id: ch.id, learning_seconds: elapsedSeconds, progress_percent: 100 });
+        await api.updateProgress({ course_id: props.id, chapter_id: ch.id, learning_seconds: Math.min(elapsedSeconds,86400), progress_percent: 100 });
+        courseStartTime=Date.now();
         completedChapters.value.add(ch.id);
         progress.value = await api.getCourseProgress(props.id);
         ElMessage.success("章节学习完成");
@@ -510,10 +519,11 @@ const CourseDetailPage = {
     };
 
     onMounted(load);
-    onUnmounted(() => {});
+    watch(()=>props.id,load);
+    onUnmounted(() => {saveVideo();});
     const joinCourse=async()=>{try{await api.joinCourse(props.id);ElMessage.success("已加入学习");await load();}catch(e){ElMessage.error(e.message);}};
     const uploadEditCover=async(event)=>{const file=event.target.files[0];if(!file)return;try{const asset=await api.uploadMedia(file);editForm.cover_image_url=asset.file_url;ElMessage.success('封面已上传，保存后生效');}catch(e){ElMessage.error(e.message);}};
-    return { uploadEditCover, joinCourse, course, progress, activeChapter, showEdit, showAddCh, showEditCh, canManage, completedChapters, editForm, chForm, editChForm, mediaList, selectedMediaName, videoUrl, docUrl, docFileName, imageUrl, isPdfDoc, downloadDoc, fullscreenPdf, pdfCanvas, pdfPageNum, pdfTotalPages, pdfScale, pdfLoading, pdfPrev, pdfNext, pdfZoomIn, pdfZoomOut, DIFF_MAP, STATUS_MAP, TYPE_MAP, selectChapter, onVideoTime, onVideoSeeking, onVideoLoaded, onVideoRateChange, onVideoEnded, videoCompleted, completeChapter, resetLearning, statusText, goExam, showExamConfig, examLinks, allExams, openExamConfig, addExamLink, removeExamLink, saveExamConfig, openEdit, doEdit, doDelete, publish, openAddCh, doAddCh, delChapter, openEditCh, doEditCh, loadMedia, onTypeChange, onEditTypeChange, navigate };
+    return { saveVideo, uploadEditCover, joinCourse, course, progress, activeChapter, showEdit, showAddCh, showEditCh, canManage, completedChapters, editForm, chForm, editChForm, mediaList, selectedMediaName, videoUrl, docUrl, docFileName, imageUrl, isPdfDoc, downloadDoc, fullscreenPdf, pdfCanvas, pdfPageNum, pdfTotalPages, pdfScale, pdfLoading, pdfPrev, pdfNext, pdfZoomIn, pdfZoomOut, DIFF_MAP, STATUS_MAP, TYPE_MAP, selectChapter, onVideoTime, onVideoLoaded, onVideoEnded, videoCompleted, completeChapter, resetLearning, statusText, goExam, showExamConfig, examLinks, allExams, openExamConfig, addExamLink, removeExamLink, saveExamConfig, openEdit, doEdit, doDelete, publish, openAddCh, doAddCh, delChapter, openEditCh, doEditCh, loadMedia, onTypeChange, onEditTypeChange, navigate };
   }
 };
 
@@ -586,11 +596,7 @@ const QuestionBankPage = {
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span>{{ selectedBank ? selectedBank.name + ' (\u5171' + total + '\u9898)' : '\u8bf7\u9009\u62e9\u5de6\u4fa7\u9898\u5e93' }}</span>
               <div v-if="selectedBank">
-                <el-button size="small" @click="downloadTemplate">\u4e0b\u8f7d\u5bfc\u5165\u6a21\u677f</el-button>
-                <el-upload :show-file-list="false" :before-upload="handleImport" accept=".xlsx">
-                  <el-button size="small" type="success" :loading="importing">\u5bfc\u5165Excel</el-button>
-                </el-upload>
-                <el-button size="small" type="primary" @click="showQCreate=true">\u65b0\u5efa\u9898\u76ee</el-button>
+                <el-button size="small" type="primary" @click="openQuestion()">\u65b0\u5efa\u9898\u76ee</el-button>
               </div>
             </div>
           </template>
@@ -603,7 +609,7 @@ const QuestionBankPage = {
               <el-table-column prop="difficulty" label="\u96be\u5ea6" width="80"><template #default="{row}">{{ '\u2605'.repeat(row.difficulty) }}</template></el-table-column>
               <el-table-column prop="score" label="\u5206\u503c" width="70" />
               <el-table-column prop="knowledge_point" label="\u77e5\u8bc6\u70b9" width="100" show-overflow-tooltip />
-              <el-table-column label="\u64cd\u4f5c" width="70"><template #default="{row}"><el-button size="small" type="danger" text @click="delQuestion(row)">\u5220\u9664</el-button></template></el-table-column>
+              <el-table-column label="\u64cd\u4f5c" width="130"><template #default="{row}"><el-button size="small" text @click="openQuestion(row)">编辑</el-button><el-button size="small" type="danger" text @click="delQuestion(row)">\u5220\u9664</el-button></template></el-table-column>
             </el-table>
             <el-pagination v-if="total>0" :total="total" :page-size="pageSize" v-model:current-page="page" layout="prev,pager,next" @current-change="loadQuestions" style="margin-top:16px" />
           </div>
@@ -620,20 +626,20 @@ const QuestionBankPage = {
       <template #footer><el-button @click="showBankCreate=false">\u53d6\u6d88</el-button><el-button type="primary" @click="saveBank">\u4fdd\u5b58</el-button></template>
     </el-dialog>
 
-    <el-dialog v-model="showQCreate" title="\u65b0\u5efa\u9898\u76ee" width="600px">
+    <el-dialog v-model="showQCreate" :title="editingQuestion?'编辑题目':'新建题目'" width="600px">
       <el-form :model="qForm" label-position="top">
-        <el-form-item label="\u9898\u578b"><el-select v-model="qForm.question_type" style="width:100%"><el-option label="\u5355\u9009\u9898" value="single_choice" /><el-option label="\u591a\u9009\u9898" value="multiple_choice" /><el-option label="\u5224\u65ad\u9898" value="true_false" /><el-option label="\u586b\u7a7a\u9898" value="fill_blank" /><el-option label="\u7b80\u7b54\u9898" value="short_answer" /></el-select></el-form-item>
+        <el-form-item label="\u9898\u578b"><el-select v-model="qForm.question_type" style="width:100%"><el-option label="\u5355\u9009\u9898" value="single_choice" /><el-option label="\u591a\u9009\u9898" value="multiple_choice" /><el-option label="\u5224\u65ad\u9898" value="true_false" /><el-option label="\u7b80\u7b54\u9898" value="short_answer" /></el-select></el-form-item>
         <el-form-item label="\u9898\u5e72"><el-input v-model="qForm.content" type="textarea" :rows="3" /></el-form-item>
         <el-form-item label="\u9009\u9879" v-if="qForm.question_type==='single_choice'||qForm.question_type==='multiple_choice'">
           <div v-for="(opt,i) in qForm.options" :key="i" style="display:flex;gap:8px;margin-bottom:8px"><el-input v-model="opt.key" style="width:60px" /><el-input v-model="opt.text" /><el-button text type="danger" @click="qForm.options.splice(i,1)">\u5220\u9664</el-button></div>
           <el-button size="small" @click="qForm.options.push({key:String.fromCharCode(65+qForm.options.length),text:''})">\u6dfb\u52a0\u9009\u9879</el-button>
         </el-form-item>
-        <el-form-item label="\u6b63\u786e\u7b54\u6848\uff08\u5355\u9009\u586b\u5b57\u6bcd\uff0c\u591a\u9009\u7528\u9017\u53f7\u5206\u9694\uff0c\u5224\u65ad\u586btrue/false\uff09"><el-input v-model="correctAnswerInput" /></el-form-item>
+        <el-form-item :label="qForm.question_type==='short_answer'?'参考答案':'正确答案（单选填字母，多选用逗号分隔，判断填true/false）'"><el-input v-model="correctAnswerInput" /></el-form-item>
         <el-form-item label="\u96be\u5ea6"><el-rate v-model="qForm.difficulty" /></el-form-item>
         <el-form-item label="\u77e5\u8bc6\u70b9"><el-input v-model="qForm.knowledge_point" /></el-form-item>
         <el-form-item label="\u5206\u503c"><el-input-number v-model="qForm.score" :min="0.5" :step="0.5" /></el-form-item>
       </el-form>
-      <template #footer><el-button @click="showQCreate=false">\u53d6\u6d88</el-button><el-button type="primary" @click="createQuestion">\u521b\u5efa</el-button></template>
+      <template #footer><el-button @click="showQCreate=false">\u53d6\u6d88</el-button><el-button type="primary" @click="createQuestion">保存题目</el-button></template>
     </el-dialog>
   </div>`,
   setup() {
@@ -641,9 +647,9 @@ const QuestionBankPage = {
     const questions = ref([]); const total = ref(0); const page = ref(1); const pageSize = 20;
     const searchKw = ref("");
     const showBankCreate = ref(false); const showQCreate = ref(false);
-    const editingBankId = ref("");
+    const editingBankId = ref(""); const editingQuestion=ref(null);
     const bankForm = reactive({ name:"", description:"" });
-    const qForm = reactive({ question_type:"single_choice", content:"", options:[{key:"A",text:""}], difficulty:1, knowledge_point:"", score:1 });
+    const qForm = reactive({ question_type:"single_choice", content:"", options:[{key:"A",text:""},{key:"B",text:""}], difficulty:1, knowledge_point:"", score:1 });
     const correctAnswerInput = ref("");
     const importing = ref(false);
     const TYPE_TXT = { single_choice:"\u5355\u9009", multiple_choice:"\u591a\u9009", true_false:"\u5224\u65ad", fill_blank:"\u586b\u7a7a", short_answer:"\u7b80\u7b54" };
@@ -691,12 +697,14 @@ const QuestionBankPage = {
         await loadBanks();
       } catch(e) { if(e!=="cancel") ElMessage.error(e.message); }
     };
+    const openQuestion=q=>{editingQuestion.value=q?.id||null;Object.assign(qForm,q?{question_type:q.question_type,content:q.content,options:JSON.parse(JSON.stringify(q.options||[{key:'A',text:''},{key:'B',text:''}])),difficulty:q.difficulty,knowledge_point:q.knowledge_point||'',score:q.score}:{question_type:'single_choice',content:'',options:[{key:'A',text:''},{key:'B',text:''}],difficulty:1,knowledge_point:'',score:1});correctAnswerInput.value=Array.isArray(q?.correct_answer)?q.correct_answer.join(','):q?.correct_answer||'';showQCreate.value=true;};
     const createQuestion = async () => {
       if (!qForm.content) return ElMessage.warning("\u8bf7\u8f93\u5165\u9898\u5e72");
       let answer = correctAnswerInput.value;
       if (qForm.question_type === "multiple_choice") answer = answer.split(",").map(s=>s.trim());
       try {
-        await api.createQuestion({ ...qForm, correct_answer: answer, question_bank_id: selectedBank.value.id });
+        const body={ ...qForm, correct_answer: answer, question_bank_id: selectedBank.value.id };
+        if(editingQuestion.value)await api.updateQuestion(editingQuestion.value,body);else await api.createQuestion(body);
         ElMessage.success("\u521b\u5efa\u6210\u529f");
         showQCreate.value = false; qForm.content=""; correctAnswerInput.value=""; qForm.options=[{key:"A",text:""}];
         await loadQuestions(); await loadBanks();
@@ -738,7 +746,7 @@ const QuestionBankPage = {
     };
 
     onMounted(loadBanks);
-    return { banks, selectedBank, questions, total, page, pageSize, searchKw, showBankCreate, showQCreate, editingBankId, bankForm, qForm, correctAnswerInput, importing, TYPE_TXT, filteredQuestions, loadBanks, selectBank, loadQuestions, saveBank, editBank, delBank, createQuestion, delQuestion, handleImport, downloadTemplate, navigate };
+    return { editingQuestion,openQuestion,banks, selectedBank, questions, total, page, pageSize, searchKw, showBankCreate, showQCreate, editingBankId, bankForm, qForm, correctAnswerInput, importing, TYPE_TXT, filteredQuestions, loadBanks, selectBank, loadQuestions, saveBank, editBank, delBank, createQuestion, delQuestion, handleImport, downloadTemplate, navigate };
   }
 };
 
@@ -1602,18 +1610,19 @@ const ExamTakePage = {
   props: ["id"],
   template: `
   <div v-if="started">
-    <el-page-header @back="navigate('exams')" style="margin-bottom:16px">
+    <el-page-header @back="navigate('course/'+exam.course_id)" style="margin-bottom:16px">
       <template #content><span>考试中 - 剩余 <span :style="{color: remaining<300?'red':'inherit'}">{{ formatTime(remaining) }}</span></span></template>
     </el-page-header>
     <el-progress :percentage="answeredCount/questions.length*100" :show-text="false" style="margin-bottom:16px" />
     <div v-for="(q,i) in questions" :key="q.id" class="exam-question">
       <div style="font-weight:bold;margin-bottom:12px">{{ i+1 }}. {{ q.content }} <el-tag size="small">{{ q.score }}分</el-tag></div>
-      <div v-if="q.type==='single_choice'"><el-radio-group v-model="answers[q.id]"><el-radio v-for="opt in q.options" :key="opt.key" :value="opt.key" style="display:block;margin-bottom:8px">{{ opt.key }}. {{ opt.text }}</el-radio></el-radio-group></div>
-      <div v-else-if="q.type==='multiple_choice'"><el-checkbox-group v-model="multiAnswers[q.id]"><el-checkbox v-for="opt in q.options" :key="opt.key" :value="opt.key" style="display:block;margin-bottom:8px">{{ opt.key }}. {{ opt.text }}</el-checkbox></el-checkbox-group></div>
-      <div v-else-if="q.type==='true_false'"><el-radio-group v-model="answers[q.id]"><el-radio value="true">正确</el-radio><el-radio value="false">错误</el-radio></el-radio-group></div>
-      <div v-else><el-input v-model="answers[q.id]" type="textarea" :rows="3" placeholder="请输入答案" /></div>
+      <div v-if="q.type==='single_choice'"><el-radio-group v-model="answers[q.id]" :disabled="remaining<=0||submitting" @change="saveAnswers"><el-radio v-for="opt in q.options" :key="opt.key" :value="opt.key" style="display:block;margin-bottom:8px">{{ opt.key }}. {{ opt.text }}</el-radio></el-radio-group></div>
+      <div v-else-if="q.type==='multiple_choice'"><el-checkbox-group v-model="multiAnswers[q.id]" :disabled="remaining<=0||submitting" @change="saveAnswers"><el-checkbox v-for="opt in q.options" :key="opt.key" :value="opt.key" style="display:block;margin-bottom:8px">{{ opt.key }}. {{ opt.text }}</el-checkbox></el-checkbox-group></div>
+      <div v-else-if="q.type==='true_false'"><el-radio-group v-model="answers[q.id]" :disabled="remaining<=0||submitting" @change="saveAnswers"><el-radio value="true">正确</el-radio><el-radio value="false">错误</el-radio></el-radio-group></div>
+      <div v-else><el-input v-model="answers[q.id]" :disabled="remaining<=0||submitting" @input="queueSave" type="textarea" :rows="3" placeholder="请输入答案" /></div>
     </div>
-    <div style="text-align:center;margin-top:20px"><el-button type="primary" size="large" :loading="submitting" @click="doSubmit">提交试卷</el-button></div>
+    <p>答案{{saveFailed?'保存失败，请重试':'修改后保存'}}；截止后按此前已保存的答案结算。刷新不会延长答题时间。</p>
+    <div style="text-align:center;margin-top:20px"><el-button :disabled="remaining<=0||submitting" @click="saveAnswers">保存答案</el-button><el-button type="primary" size="large" :loading="submitting" @click="doSubmit">提交试卷</el-button></div>
   </div>
   <div v-else-if="exam" style="text-align:center;padding:60px">
     <h2>{{ exam.title }}</h2>
@@ -1623,25 +1632,28 @@ const ExamTakePage = {
       <el-descriptions-item label="及格分">{{ exam.pass_score }}</el-descriptions-item>
       <el-descriptions-item label="可考次数">{{ exam.max_attempts }}</el-descriptions-item>
     </el-descriptions>
-    <el-button type="primary" size="large" @click="start">开始考试</el-button>
+    <el-button @click="navigate('course/'+exam.course_id)">返回课程</el-button><el-button type="primary" size="large" @click="start">开始考试</el-button>
   </div>`,
   setup(props) {
     const exam = ref(null); const started = ref(false); const questions = ref([]);
     const answers = reactive({}); const multiAnswers = reactive({}); const recordId = ref(""); const submitting = ref(false);
-    const remaining = ref(0); let timer = null;
+    const remaining = ref(0),saveFailed=ref(false); let timer = null,saveTimer=null,deadline=0,clockOffset=0,saving=Promise.resolve();
     const answeredCount = computed(() => { let n = 0; questions.value.forEach(q => { if (q.type === "multiple_choice") { if ((multiAnswers[q.id]||[]).length > 0) n++; } else { if (answers[q.id] && answers[q.id] !== "") n++; } }); return n; });
     const formatTime = (s) => { const m = Math.floor(s/60); const sec = s%60; return m+":"+String(sec).padStart(2,"0"); };
-    onMounted(async () => { try { exam.value = await api.getExam(props.id); } catch(e) { ElMessage.error(e.message); } });
+    onMounted(async () => { try { exam.value = await api.getExam(props.id); const records=await api.getMyExamRecords(props.id);if(records.some(r=>r.status==='in_progress'))await start(); } catch(e) { ElMessage.error(e.message); } });
     const start = async () => {
-      try { const r = await api.startExam(props.id); recordId.value=r.record_id; questions.value=r.questions; started.value=true; remaining.value=r.duration_minutes*60; questions.value.forEach(q=>{ if(q.type==="multiple_choice"){multiAnswers[q.id]=[];}else{answers[q.id]="";} }); timer=setInterval(()=>{ remaining.value--; if(remaining.value<=0){ clearInterval(timer); doSubmit(); } },1000); } catch(e) { ElMessage.error(e.message); }
+      try { const r=await api.startExam(props.id);if(r.status!=='in_progress'){ElMessage.info('该次考试已结束，请在课程内查看成绩');navigate('course/'+exam.value.course_id);return;}recordId.value=r.record_id;questions.value=r.questions;deadline=Date.parse(r.deadline_at);clockOffset=Date.parse(r.server_time)-Date.now();questions.value.forEach(q=>{const saved=(r.answers||[]).find(a=>a.question_id===q.id)?.answer;if(q.type==='multiple_choice')multiAnswers[q.id]=saved||[];else answers[q.id]=saved||'';});remaining.value=Math.max(0,Math.ceil((deadline-Date.now()-clockOffset)/1000));started.value=true;timer=setInterval(()=>{remaining.value=Math.max(0,Math.ceil((deadline-Date.now()-clockOffset)/1000));if(remaining.value<=0){clearInterval(timer);doSubmit();}},500); } catch(e) { ElMessage.error(e.message); }
     };
+    const answerBody=()=>({answers:questions.value.map(q=>({question_id:q.id,answer:q.type==='multiple_choice'?(multiAnswers[q.id]||[]):answers[q.id]||null}))});
+    const saveAnswers=()=>{if(!recordId.value||remaining.value<=0||submitting.value)return;const body=answerBody();saving=saving.catch(()=>{}).then(()=>api.saveExamDraft(recordId.value,body)).then(()=>{saveFailed.value=false;}).catch(e=>{saveFailed.value=true;ElMessage.error(e.message);});return saving;};
+    const queueSave=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(saveAnswers,400);};
     const doSubmit = async () => {
-      if (timer) clearInterval(timer); submitting.value=true;
-      try { const ans = questions.value.map(q=>({question_id:q.id, answer: q.type==="multiple_choice" ? (multiAnswers[q.id]||[]) : answers[q.id]})); const r = await api.submitExam(recordId.value, {answers:ans, time_spent_seconds: exam.value.duration_minutes*60-remaining.value}); let msg = "得分: "+r.total_score+" / "+r.max_score; if(r.is_pass!==null) msg += r.is_pass?" (通过)":" (未通过)"; if(r.status==="submitted") msg += " (待批改)"; ElMessageBox.alert(msg, "考试结果", {type:r.is_pass?"success":"info"}); navigate("exams"); } catch(e) { ElMessage.error(e.message); }
+      if(submitting.value)return;if (timer) clearInterval(timer);clearTimeout(saveTimer); submitting.value=true;
+      try { await saving;const r=await api.submitExam(recordId.value,answerBody());let msg='得分: '+r.total_score+' / '+r.max_score;if(r.is_pass!==null)msg+=r.is_pass?'（通过）':'（未通过）';if(r.status==='submitted')msg+='（待批改，尚无最终结论）';started.value=false;await ElMessageBox.alert(msg,'考试结果',{type:r.is_pass?'success':'info'});navigate('course/'+exam.value.course_id); } catch(e) { ElMessage.error(e.message); }
       submitting.value=false;
     };
-    onUnmounted(() => { if(timer) clearInterval(timer); });
-    return { exam, started, questions, answers, multiAnswers, recordId, submitting, remaining, answeredCount, formatTime, start, doSubmit, navigate };
+    onUnmounted(() => { if(timer) clearInterval(timer);clearTimeout(saveTimer); });
+    return { saveAnswers,queueSave,saveFailed,exam, started, questions, answers, multiAnswers, recordId, submitting, remaining, answeredCount, formatTime, start, doSubmit, navigate };
   }
 };
 
@@ -2245,6 +2257,7 @@ const App = {
       {key:'courses',label:'课程中心',icon:'Reading',perm:'course:read'},
       {key:'my-courses',label:'我的课程',icon:'Notebook',role:'student'},
       {key:'media',label:'素材库',icon:'FolderOpened',perm:'course:create'},
+      {key:'question-banks',label:'题库管理',icon:'Document',perm:'exam:create'},
       {key:'categories',label:'课程分类',icon:'Files',perm:'system:config'},
       {key:'users',label:'用户与教师审核',icon:'UserFilled',perm:'user:read'},
       {key:'notifications',label:'消息中心',icon:'Bell'},
@@ -2269,8 +2282,8 @@ const App = {
         } catch(e) {}
       }, 30000); // check every 30s
     };
-    const componentMap={login:LoginPage,dashboard:DashboardPage,'my-courses':MyCoursesPage,courses:CourseListPage,course:CourseDetailPage,media:MediaPage,categories:CategoryPage,notifications:NotificationPage,users:UserManagePage,profile:ProfilePage};
-    const currentComponent=computed(()=>{if(!api.isLoggedIn())return LoginPage;if(!userInfo.value)return null;const allowed=currentPage.value==='course'?api.hasPerm('course:read'):menuItems.value.some(m=>m.key===currentPage.value);return allowed?(componentMap[currentPage.value]||DashboardPage):DashboardPage;});
+    const componentMap={login:LoginPage,dashboard:DashboardPage,'my-courses':MyCoursesPage,courses:CourseListPage,course:CourseDetailPage,media:MediaPage,'question-banks':QuestionBankPage,exam:ExamTakePage,categories:CategoryPage,notifications:NotificationPage,users:UserManagePage,profile:ProfilePage};
+    const currentComponent=computed(()=>{if(!api.isLoggedIn())return LoginPage;if(!userInfo.value)return null;const allowed=currentPage.value==='course'?api.hasPerm('course:read'):currentPage.value==='exam'?api.hasPerm('exam:read'):menuItems.value.some(m=>m.key===currentPage.value);return allowed?(componentMap[currentPage.value]||DashboardPage):DashboardPage;});
     onMounted(async () => { parseRoute(); window.addEventListener("hashchange",()=>parseRoute()); if(api.isLoggedIn()) { try { userInfo.value=await api.getMe(); loadUnread(); startSessionTimer(); } catch(e) { api.clearToken(); } } });
     const drawerVisible = ref(false);
     const handleMenuSelect = (key) => { navigate(key); if (isMobile.value) drawerVisible.value = false; };

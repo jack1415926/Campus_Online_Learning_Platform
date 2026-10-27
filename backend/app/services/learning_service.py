@@ -11,7 +11,7 @@ from app.models.learning import (
     AssignmentType, CompletionStatus, CourseAssignment, LearningPath,
     LearningRecord, TrainingPlan, plan_courses, path_courses,
 )
-from app.models.notification import NotificationType
+from app.models.notification import Notification, NotificationType
 from app.models.role import Role, UserRole
 from app.models.user import User
 from app.schemas.learning import (
@@ -232,6 +232,9 @@ class LearningRecordService:
 
     @staticmethod
     def update_progress(db: Session, user_id: str, body: ProgressUpdateRequest):
+        # Serialize progress and completion notifications with course transitions.
+        db.execute(select(Course.id).where(Course.id == body.course_id).with_for_update()).one()
+        was_complete = LearningRecordService.get_course_progress(db, user_id, body.course_id, for_update=True)["is_complete"]
         now = datetime.now(timezone.utc).isoformat()
         stmt = select(LearningRecord).where(
             LearningRecord.user_id == user_id,
@@ -241,7 +244,7 @@ class LearningRecordService:
             stmt = stmt.where(LearningRecord.chapter_id == body.chapter_id)
         else:
             stmt = stmt.where(LearningRecord.chapter_id.is_(None))
-        record = db.execute(stmt).scalar_one_or_none()
+        record = db.execute(stmt.with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
         if not record:
             record = LearningRecord(
                 user_id=user_id, course_id=body.course_id,
@@ -249,21 +252,19 @@ class LearningRecordService:
                 status=CompletionStatus.in_progress,
             )
             db.add(record)
-        record.learning_seconds = (record.learning_seconds or 0) + body.learning_seconds
+        if record.status != CompletionStatus.completed:
+            record.learning_seconds = (record.learning_seconds or 0) + body.learning_seconds
         record.progress_percent = max(record.progress_percent or 0, body.progress_percent)
         record.last_accessed_at = now
         if body.resume_position:
             record.resume_position = body.resume_position
-        if body.min_watch_seconds:
-            record.min_watch_seconds = body.min_watch_seconds
         if body.progress_percent >= 100.0:
-            if not record.min_watch_seconds or record.learning_seconds >= record.min_watch_seconds:
-                # Mark completed and notify (only once on the transition).
-                if record.status != CompletionStatus.completed:
-                    record.status = CompletionStatus.completed
-                    record.completed_at = now
-                    LearningRecordService._notify_completion(db, user_id, body.course_id)
+            if record.status != CompletionStatus.completed:
+                record.status = CompletionStatus.completed
+                record.completed_at = now
         db.flush()
+        if not was_complete and LearningRecordService.get_course_progress(db, user_id, body.course_id, for_update=True)["is_complete"]:
+            LearningRecordService._notify_completion(db, user_id, body.course_id)
         return record
 
     @staticmethod
@@ -273,14 +274,19 @@ class LearningRecordService:
             select(Course).where(Course.id == course_id)
         ).scalar_one_or_none()
         course_title = course.title if course else course_id
+        event_key = f"learning:{course_id}:{user_id}"
+        if db.scalar(select(Notification.id).where(Notification.event_key == event_key)):
+            return
 
         # Notify the learner.
-        NotificationService.notify_user(
+        notification = NotificationService.notify_user(
             db, user_id, NotificationType.course_reminder,
             "课程已完成",
             f"恭喜您完成课程《{course_title}》！",
             extra_data={"course_id": course_id},
         )
+        notification.event_key = event_key
+        db.flush()
 
         # Notify admins (role code 'admin') so they can track completions.
         admin_user_ids = db.execute(
@@ -298,17 +304,20 @@ class LearningRecordService:
         )
 
     @staticmethod
-    def get_course_progress(db: Session, user_id: str, course_id: str):
+    def get_course_progress(db: Session, user_id: str, course_id: str, *, for_update=False):
         chapters = db.execute(
             select(Chapter).where(Chapter.course_id == course_id)
         ).scalars().all()
-        total_chapters = len(chapters)
-        records = db.execute(
-            select(LearningRecord).where(
+        chapter_ids = {str(ch.id) for ch in chapters}
+        total_chapters = len(chapter_ids)
+        record_query = select(LearningRecord).where(
                 LearningRecord.user_id == user_id, LearningRecord.course_id == course_id,
+                LearningRecord.chapter_id.in_(chapter_ids),
             )
-        ).scalars().all()
-        completed = sum(1 for r in records if r.status == CompletionStatus.completed)
+        if for_update:
+            record_query = record_query.with_for_update().execution_options(populate_existing=True)
+        records = db.scalars(record_query).all()
+        completed = len({str(r.chapter_id) for r in records if r.status == CompletionStatus.completed})
         total_seconds = sum(r.learning_seconds for r in records)
         if total_chapters > 0:
             overall = (completed / total_chapters) * 100.0
@@ -362,10 +371,10 @@ class LearningRecordService:
         else:
             all_exams_passed = True
 
-        # Course is complete when all required chapters are done AND all required exams pass
+        # Learning completion is separate from exam results and certificate eligibility.
         exam_required = bool(exam_links)
         can_take_exam = chapters_done
-        is_complete = chapters_done and all_exams_passed
+        is_complete = chapters_done
 
         if is_complete:
             status = CompletionStatus.completed
@@ -373,7 +382,7 @@ class LearningRecordService:
             # Chapters finished but exams not all passed yet -> still in progress
             status = CompletionStatus.in_progress
         else:
-            status = CompletionStatus.in_progress if total_seconds > 0 else CompletionStatus.not_started
+            status = CompletionStatus.in_progress if records else CompletionStatus.not_started
 
         return {
             "course_id": course_id, "total_chapters": total_chapters,
@@ -393,8 +402,9 @@ class LearningRecordService:
     @staticmethod
     def get_resume_position(db: Session, user_id: str, course_id: str):
         return db.execute(
-            select(LearningRecord).where(
+            select(LearningRecord).join(Chapter, Chapter.id == LearningRecord.chapter_id).where(
                 LearningRecord.user_id == user_id, LearningRecord.course_id == course_id,
+                Chapter.course_id == course_id,
             ).order_by(LearningRecord.last_accessed_at.desc())
         ).scalars().first()
 

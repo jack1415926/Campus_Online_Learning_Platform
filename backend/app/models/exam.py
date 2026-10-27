@@ -4,7 +4,7 @@ import enum
 
 from sqlalchemy import (
     CHAR, Boolean, Enum, Float, ForeignKey, Integer, JSON,
-    String, Text,
+    String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -73,12 +73,19 @@ class Exam(Base, UUIDPrimaryKey, TimestampMixin):
     end_time: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    paper_snapshot: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    grading_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ExamRecord(Base, UUIDPrimaryKey, TimestampMixin):
     """A user's exam attempt with answers and score (EX-06, EX-07)."""
 
     __tablename__ = "exam_records"
+    __table_args__ = (UniqueConstraint("exam_id", "user_id", "attempt_number", name="uq_exam_attempt"),)
+    question_snapshot: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    draft_answers: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    deadline_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pass_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     exam_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)

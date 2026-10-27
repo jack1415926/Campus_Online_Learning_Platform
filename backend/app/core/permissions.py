@@ -56,10 +56,9 @@ class RoleCode:
     TEACHER = "teacher"
 
 
-# Campus roles use the existing permission mechanism. Exam/report permissions
-# become available with their scoped business endpoints in later stages.
+# Campus exam permissions are enforced together with course ownership/membership.
 BUILTIN_ROLE_PERMISSIONS = {
-    RoleCode.STUDENT: [Perm.COURSE_READ, Perm.LEARNING_READ],
-    RoleCode.TEACHER: [Perm.COURSE_READ, Perm.COURSE_CREATE, Perm.COURSE_UPDATE, Perm.COURSE_DELETE, Perm.LEARNING_READ],
+    RoleCode.STUDENT: [Perm.COURSE_READ, Perm.LEARNING_READ, Perm.EXAM_READ],
+    RoleCode.TEACHER: [Perm.COURSE_READ, Perm.COURSE_CREATE, Perm.COURSE_UPDATE, Perm.COURSE_DELETE, Perm.LEARNING_READ, Perm.EXAM_READ, Perm.EXAM_CREATE, Perm.EXAM_GRADE],
     RoleCode.ADMIN: [value for name, value in vars(Perm).items() if name.isupper()],
 }

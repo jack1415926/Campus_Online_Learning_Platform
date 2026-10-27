@@ -2,7 +2,8 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+import math
 
 from app.models.learning import AssignmentType, CompletionStatus
 
@@ -95,10 +96,19 @@ class CourseAssignmentResponse(BaseModel):
 class ProgressUpdateRequest(BaseModel):
     course_id: str
     chapter_id: str | None = None
-    learning_seconds: int = 0
-    progress_percent: float = 0.0
+    learning_seconds: int = Field(default=0, ge=0, le=86400)
+    progress_percent: float = Field(default=0.0, ge=0, le=100, allow_inf_nan=False)
     resume_position: dict | None = None
     min_watch_seconds: int | None = None
+
+    @field_validator("resume_position")
+    @classmethod
+    def valid_position(cls, value):
+        if value and "video_time" in value:
+            position = value["video_time"]
+            if isinstance(position, bool) or not isinstance(position, (int, float)) or not math.isfinite(position) or not 0 <= position <= 2592000:
+                raise ValueError("视频播放位置无效")
+        return value
 
 
 class LearningRecordResponse(BaseModel):

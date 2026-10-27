@@ -113,6 +113,7 @@ class LearningRecord(Base, UUIDPrimaryKey, TimestampMixin):
     """Per-chapter learning progress tracking (LM-04, LM-05)."""
 
     __tablename__ = "learning_records"
+    __table_args__ = (UniqueConstraint("user_id", "course_id", "chapter_id", name="uq_learning_user_chapter"),)
 
     user_id: Mapped[str] = mapped_column(CHAR(36), nullable=False, index=True)
     course_id: Mapped[str] = mapped_column(

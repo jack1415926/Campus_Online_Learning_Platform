@@ -7,6 +7,7 @@ from app.core import campus_access as access
 from app.models.learning import CourseAssignment, AssignmentType, LearningRecord
 from app.models.exam import Exam, ExamRecord
 from app.models.media import MediaAsset
+from app.models.homework import Homework, HomeworkSubmission
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -292,6 +293,8 @@ def delete_chapter(
 
 
 def _ensure_no_activity(db, course_id):
+    if db.scalar(select(HomeworkSubmission.id).join(Homework, Homework.id == HomeworkSubmission.homework_id).where(Homework.course_id == course_id).limit(1)):
+        raise HTTPException(409, "课程已有作业提交，请使用归档保留历史")
     for model in (CourseAssignment, LearningRecord, Exam):
         if db.scalar(select(model.id).where(model.course_id == course_id).limit(1).with_for_update()):
             raise HTTPException(409, "课程已有成员、记录或考核，请使用归档保留历史")

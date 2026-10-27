@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**阶段 3 已完成：三角色、教师注册审核、课程归属与审核、学生加入学习。** 已通过真实 MySQL/HTTP 回归和三角色页面验证。学习进度与通知修复、作业、考试等仍按后续阶段开发。
+**阶段 5 已完成：手动组卷、四题型、固定满分、服务器截止、人工阅卷与成绩持久化。** 已通过针对性的真实 MySQL/HTTP 与页面验证。互动、证书等按后续阶段开发。
 
 - 正式源码位于 `backend/`，后续开发不依赖本地参考目录。
 - `nov_lms/` 是本地复用参考项目，已整体忽略，不提交到 GitHub。
@@ -78,7 +78,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-local.ps1 -Data
 
 后端代码修改后先停止再启动。应用日志在 `.runtime/app.log`、`.runtime/app.err`，数据库日志在 `.runtime/mysql/server.log`。`.runtime/`、`backend/.env`、上传目录均被 Git 忽略。
 
-当前只完成阶段 1～3。成绩、学习进度与通知等历史问题仍在后续阶段处理；考试等旧接口暂限管理员，页面不提供尚未适配的考核入口。本阶段通过不代表全部需求已验收或可对外部署。
+当前完成阶段 1～5。教师在题库管理维护本人四题型，在本人草稿课程内准备作业及手动试卷，随课程审核发布开放；学生在课程内提交作业、考试、查看结果，教师使用共用表格/弹窗批改。未批与 0 分分别展示，简答题全部批完才生成最终考试结论。随机组卷、刷题、错题本、Excel 导入与分析看板入口不开放，既有辅助接口限管理员。本阶段通过不代表全部需求已验收或可对外部署。
 
 ## 环境检查
 
@@ -92,8 +92,18 @@ Set-Location ..
 .\.venv\Scripts\python.exe scripts/check_environment.py
 # 第三阶段真实接口回归（会创建随机测试账号、课程和文件，不清空现有数据）。
 .\.venv\Scripts\python.exe scripts/check_stage3.py
+# 阶段四回归，复用上一步生成的本地随机测试账号。
+.\.venv\Scripts\python.exe scripts/check_stage4.py
+# 阶段五核心回归；已有测试账号时可直接运行，无需重跑前两项。
+.\.venv\Scripts\python.exe scripts/check_stage5.py
+# 只补查提前关闭、过期列表和归档边界。
+.\.venv\Scripts\python.exe scripts/check_stage5.py --edges
 ```
 
 基础单元测试不连接数据库。`check_environment.py` 仅在本地校园库创建一条随机标记的临时课程，提交后用新会话校验中文与 JSON 持久化，并清理该行；另检查普通账号不能访问系统用户表、HTTP 登录和就绪接口，结果保存在 `.runtime/environment-check.json`。这不替代完整校园业务验收。
 
 `check_stage3.py` 的摘要和测试凭据分别保存在 `.runtime/stage3-results.json`、`.runtime/stage3-accounts.json`；不要公开凭据文件。测试数据保留用于本地页面回归；脚本会重新登录测试管理员，请勿同时用该账号进行其他验证（系统采用单会话登录）。页面验收截图位于 `.runtime/stage3-browser/`，不提交 Git。
+
+`check_stage4.py` 覆盖两章进度、完成通知去重、续播位置、作业提交/修改/批改、附件权限、截止与归档限制，结果在 `.runtime/stage4-results.json`。本次为 5 组、80 次真实请求通过，页面证据在 `.runtime/stage4-browser/`。视频和 PDF 样例仅用于本机验证，不提交 Git。阶段四迁移会为学习记录增加唯一约束；如旧库已有同一学生/章节的重复行，会明确停止并要求检查历史数据，不自动删除记录。
+
+阶段五结果在 `.runtime/stage5-results.json`（5 组、76 次请求）和 `.runtime/stage5-edge-results.json`（3 项边界、18 次请求），页面证据在 `.runtime/stage5-browser/`。上述检查按改动范围选用，不要求每次全部执行。学生刷新会恢复原尝试、已保存答案和服务器截止；超过截止的新答案不计入，按此前保存的答案结束尝试。旧答卷若无试卷快照，不以当前题库重新计算历史分数；迁移发现重复尝试号会停止并要求复核，不自动删除记录。

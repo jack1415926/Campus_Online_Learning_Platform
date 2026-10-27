@@ -2,7 +2,7 @@
 
 import enum
 
-from sqlalchemy import Enum, String, Text, JSON
+from sqlalchemy import Enum, String, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKey
@@ -57,6 +57,8 @@ class Notification(Base, UUIDPrimaryKey, TimestampMixin):
     """A notification sent to a user (NTF-01, NTF-02)."""
 
     __tablename__ = "notifications"
+    __table_args__ = (UniqueConstraint("event_key", name="uq_notification_event"),)
+    event_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
 
     user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     notification_type: Mapped[NotificationType] = mapped_column(

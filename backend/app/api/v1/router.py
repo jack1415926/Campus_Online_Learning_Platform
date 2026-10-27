@@ -17,6 +17,7 @@ from app.api.v1.users import router as users_router
 from app.api.v1.categories import router as categories_router, tag_router
 from app.api.v1.media import router as media_router
 from app.api.v1.courses import router as courses_router
+from app.api.v1.homework import router as homework_router
 from app.api.v1.learning import router as learning_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.exams import router as exams_router
@@ -43,10 +44,11 @@ api_router.include_router(categories_router, dependencies=[Depends(taxonomy_acce
 api_router.include_router(tag_router, dependencies=[Depends(taxonomy_access)])
 api_router.include_router(media_router)
 api_router.include_router(courses_router)
+api_router.include_router(homework_router)
 api_router.include_router(learning_router)
 api_router.include_router(notifications_router)
-# Legacy modules stay admin-only until their campus data scope is implemented.
-api_router.include_router(exams_router, dependencies=admin_only)
+api_router.include_router(exams_router)
+# Remaining legacy modules stay admin-only until their campus scope is implemented.
 api_router.include_router(reports_router, dependencies=admin_only)
 api_router.include_router(job_level_router, dependencies=admin_only)
 api_router.include_router(position_router, dependencies=admin_only)

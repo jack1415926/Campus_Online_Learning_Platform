@@ -174,6 +174,7 @@ def get_my_assignments(requester: User = Depends(get_current_user), db: Session 
 @router.post("/progress", response_model=LearningRecordResponse)
 def update_progress(body: ProgressUpdateRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """LM-04, LM-05: update learning progress. Works for both PC and mobile (LM-06)."""
+    db.scalar(select(Course).where(Course.id == body.course_id).with_for_update().execution_options(populate_existing=True))
     course = access.get_course(db, requester, body.course_id, learn=True)
     if "student" not in access.roles_for(db, requester) or course.status != CourseStatus.published:
         raise HTTPException(403, "仅已加入的学生可更新已发布课程的学习记录")
@@ -198,6 +199,25 @@ def get_my_records(course_id: str | None = Query(None), requester: User = Depend
     if course_id:
         access.get_course(db, requester, course_id, learn=True)
     return LearningRecordService.get_user_records(db, requester.id, course_id)
+
+
+@router.get("/courses/{course_id}/students")
+def course_students(course_id: str, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    from app.models.learning import AssignmentType
+    from app.models.homework import Homework, HomeworkSubmission
+    from app.models.exam import ExamRecord, Exam, ExamStatus
+    access.get_course(db, requester, course_id, manage=True)
+    stmt = select(User).join(CourseAssignment, CourseAssignment.target_id == User.id).where(CourseAssignment.course_id == course_id, CourseAssignment.assignment_type == AssignmentType.user)
+    total = db.scalar(select(func.count()).select_from(stmt.subquery()))
+    items = []
+    homework_total = db.scalar(select(func.count()).select_from(Homework).where(Homework.course_id == course_id))
+    for user in db.scalars(stmt.order_by(User.full_name, User.id).offset((page-1)*page_size).limit(page_size)):
+        progress = LearningRecordService.get_course_progress(db, str(user.id), course_id)
+        submissions = db.scalars(select(HomeworkSubmission).join(Homework, Homework.id == HomeworkSubmission.homework_id).where(Homework.course_id == course_id, HomeworkSubmission.user_id == user.id)).all()
+        exam_results = db.execute(select(ExamRecord, Exam.title).join(Exam, Exam.id == ExamRecord.exam_id).where(Exam.course_id == course_id, ExamRecord.user_id == user.id, ExamRecord.status == ExamStatus.graded).order_by(ExamRecord.created_at, ExamRecord.id)).all()
+        items.append({"user_id": str(user.id), "full_name": user.full_name, "overall_percent": progress["overall_percent"], "completed_chapters": progress["completed_chapters"], "total_chapters": progress["total_chapters"], "homework_total": homework_total, "submitted": len(submissions), "graded": sum(s.graded_at is not None for s in submissions), "exam_results": [{"exam_id": str(r.exam_id), "title": title, "attempt_number": r.attempt_number, "total_score": r.total_score, "max_score": r.max_score, "is_pass": r.is_pass} for r,title in exam_results]})
+    return {"items": items, "meta": {"total": total, "page": page, "page_size": page_size}}
 
 
 @router.get("/resume/{course_id}", response_model=LearningRecordResponse | None)
