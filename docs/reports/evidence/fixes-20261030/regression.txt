@@ -1,0 +1,12 @@
+✔ ISSUE-01: DOCX passes the actual upload hook and file picker (11.4312ms)
+✔ ISSUE-02: new chapters load video; refresh and type changes use the current type (4.2569ms)
+✔ ISSUE-03: first failed identity load invalidates the cached component immediately (2.9134ms)
+✔ ISSUE-04: validation arrays give Chinese field messages and preserve business errors (2.6098ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 84.8856

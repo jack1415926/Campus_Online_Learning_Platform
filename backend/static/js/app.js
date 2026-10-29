@@ -299,7 +299,7 @@ const CourseDetailPage = {
                 <span>{{ m.name }}</span><el-tag size="small" style="margin-left:8px">{{ m.media_type }}</el-tag>
               </el-option>
             </el-select>
-            <el-button @click="loadMedia">刷新</el-button>
+            <el-button @click="loadMedia(chForm.content_type)">刷新</el-button>
           </div>
           <div v-if="chForm.content_ref_id" style="margin-top:8px;color:#67c23a;font-size:13px">已选择: {{ selectedMediaName }}</div>
         </el-form-item>
@@ -424,7 +424,7 @@ const CourseDetailPage = {
         let items = r.items || [];
         if (type === "document") items = items.filter(m => /\.(pdf|docx)$/i.test(m.name || ""));
         mediaList.value = items;
-      } catch(e) {}
+      } catch(e) { mediaList.value = []; ElMessage.error(e.message); }
     };
     const onTypeChange = () => { chForm.content_ref_id = ""; if (chForm.content_type === "video" || chForm.content_type === "document" || chForm.content_type === "image") loadMedia(chForm.content_type); };
     const onEditTypeChange = () => { editChForm.content_ref_id = ""; if (editChForm.content_type === "video" || editChForm.content_type === "document" || editChForm.content_type === "image") loadMedia(editChForm.content_type); };
@@ -503,7 +503,7 @@ const CourseDetailPage = {
     const doDelete = async () => { try { await ElMessageBox.confirm("确认删除课程？", "提示", { type: "warning" }); await api.deleteCourse(props.id); ElMessage.success("删除成功"); navigate("courses"); } catch(e) { if (e !== "cancel") ElMessage.error(e.message); } };
     const publish = async (action) => { try { let reason="";if(action==='reject'){const r=await ElMessageBox.prompt("请填写驳回原因","课程审核",{inputValidator:v=>!!v?.trim()||"原因不能为空"});reason=r.value;} await api.publishCourse(props.id, action, reason); ElMessage.success("操作成功"); load(); } catch(e) { ElMessage.error(e.message); } };
 
-    const openAddCh = () => { chForm.title=""; chForm.content_type="video"; chForm.text_content=""; chForm.content_ref_id=""; chForm.estimated_minutes=10; chForm.is_required=true; showAddCh.value = true; };
+    const openAddCh = () => { chForm.title=""; chForm.content_type="video"; chForm.text_content=""; chForm.content_ref_id=""; chForm.estimated_minutes=10; chForm.is_required=true; showAddCh.value = true; loadMedia(chForm.content_type); };
     const doAddCh = async () => {
       if (!chForm.title) return ElMessage.warning("请输入章节标题");
       try { chForm.sort_order = (course.value.chapters||[]).length + 1; await api.addChapter(props.id, { ...chForm }); ElMessage.success("添加成功"); showAddCh.value = false; load(); } catch(e) { ElMessage.error(e.message); }
@@ -2045,7 +2045,7 @@ const MediaPage = {
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span>{{ selectedCat ? selectedCat.name + ' (\u5171' + total + '\u4e2a\u7d20\u6750)' : '\u5168\u90e8\u7d20\u6750 (' + total + ')' }}</span>
               <div v-if="selectedCat" style="display:flex;align-items:center;gap:8px">
-                <el-upload :show-file-list="false" :http-request="doUpload" :before-upload="checkUpload" :disabled="uploading" :accept="'.pdf,.mp4,.avi,.mov,.jpg,.png,.mp3,.wav'">
+                <el-upload :show-file-list="false" :http-request="doUpload" :before-upload="checkUpload" :disabled="uploading" :accept="'.pdf,.docx,.mp4,.avi,.mov,.jpg,.png,.mp3,.wav'">
                   <el-button size="small" type="primary" :loading="uploading">\u4e0a\u4f20\u7d20\u6750</el-button>
                 </el-upload>
                 <template v-if="uploading">
@@ -2098,7 +2098,7 @@ const MediaPage = {
         const r = await api.listMedia(params); items.value = r.items||[]; total.value = r.meta.total;
       } catch(e) { ElMessage.error(e.message); }
     };
-    const OFFICE_EXTS = ["doc","docx","ppt","pptx"];
+    const OFFICE_EXTS = ["doc","ppt","pptx"];
     const checkUpload = (file) => {
       const ext = (file.name.split(".").pop()||"").toLowerCase();
       if (OFFICE_EXTS.includes(ext)) {

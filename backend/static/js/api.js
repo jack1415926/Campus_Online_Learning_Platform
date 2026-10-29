@@ -2,9 +2,10 @@
 const API_BASE = "/api/v1";
 
 const api = {
-  getToken() { return localStorage.getItem("lms_token") || ""; },
-  setToken(token) { localStorage.setItem("lms_token", token); },
-  clearToken() { localStorage.removeItem("lms_token"); this._perms = []; this._user = null; },
+  _session: Vue.reactive({ token: localStorage.getItem("lms_token") || "" }),
+  getToken() { return this._session.token; },
+  setToken(token) { localStorage.setItem("lms_token", token); this._session.token = token; },
+  clearToken() { localStorage.removeItem("lms_token"); this._session.token = ""; this._perms = []; this._user = null; },
   // Permission storage
   _perms: null,
   _user: null,
@@ -48,7 +49,13 @@ const api = {
       throw new Error(reason);
     }
     if (!resp.ok) {
-      const msg = json && json.detail ? (typeof json.detail === "string" ? json.detail : JSON.stringify(json.detail)) : "Request failed";
+      const detail = json && json.detail;
+      const fields = {email:'邮箱',username:'用户名',password:'密码',full_name:'姓名',old_password:'原密码',new_password:'新密码'};
+      const msg = typeof detail === "string" ? detail : Array.isArray(detail) ? [...new Set(detail.map(error => {
+        const field = error.loc?.at(-1);
+        if (field === 'email') return '邮箱格式不正确';
+        return (fields[field] || '提交内容') + '填写不正确，请检查后重试';
+      }))].join('；') : '请求失败，请稍后重试';
       throw new Error(msg);
     }
     return json;
