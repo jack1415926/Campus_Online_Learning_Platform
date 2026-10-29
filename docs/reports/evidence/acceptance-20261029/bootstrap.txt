@@ -1,0 +1,11 @@
+
+test_configuration_requires_secret_and_mysql_driver (test_bootstrap.BootstrapTests.test_configuration_requires_secret_and_mysql_driver) ... ok
+test_health_and_homepage (test_bootstrap.BootstrapTests.test_health_and_homepage) ... ok
+test_readiness_requires_database_and_hides_internal_errors (test_bootstrap.BootstrapTests.test_readiness_requires_database_and_hides_internal_errors) ... ok
+test_spa_fallback_does_not_serve_backend_source (test_bootstrap.BootstrapTests.test_spa_fallback_does_not_serve_backend_source) ... ok
+test_unknown_api_is_not_success_or_spa (test_bootstrap.BootstrapTests.test_unknown_api_is_not_success_or_spa) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.113s
+
+OK

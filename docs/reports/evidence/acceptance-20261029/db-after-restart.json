@@ -1,0 +1,63 @@
+{
+  "phase": "after-restart",
+  "time": "2026-10-29T13:56:30.880859+08:00",
+  "mysql": "8.4.11",
+  "migration": "e8f9a0b1c2d3",
+  "record_id": "da3f61df-1d9d-41d7-84f7-400e38d05e7a",
+  "deadline_unchanged": true,
+  "attempt_number": 1,
+  "exam_status": "graded",
+  "score": 12.0,
+  "max_score": 17.0,
+  "is_pass": true,
+  "answers": [
+    {
+      "score": 0.0,
+      "answer": "我会通过练习验证理解，并记录实践步骤。",
+      "graded": true,
+      "is_correct": null,
+      "question_id": "ee3c8805-f56e-46fe-88c7-93c3db005a07",
+      "grader_comment": "第一题零分已批；第二题暂不批。"
+    },
+    {
+      "score": 5.0,
+      "answer": "我学会了在线学习、作业提交和考试的完整流程。",
+      "graded": true,
+      "is_correct": null,
+      "question_id": "704d1152-1454-46c0-9de2-9a633b4e824e",
+      "grader_comment": "第二题满分；完成全部阅卷。"
+    },
+    {
+      "score": 2.0,
+      "answer": "true",
+      "graded": true,
+      "is_correct": true,
+      "question_id": "449bbfd5-49f4-4ee8-a673-c04648cacc8a",
+      "grader_comment": null
+    },
+    {
+      "score": 3.0,
+      "answer": [
+        "A",
+        "B"
+      ],
+      "graded": true,
+      "is_correct": true,
+      "question_id": "c7eca63e-5483-48c6-868c-53ec6605b62b",
+      "grader_comment": null
+    },
+    {
+      "score": 2.0,
+      "answer": "A",
+      "graded": true,
+      "is_correct": true,
+      "question_id": "f5c1d2ca-5f0e-4d3f-97f8-1b3df459d5f3",
+      "grader_comment": null
+    }
+  ],
+  "homework_score": 0.0,
+  "homework_feedback": "人工验收：零分已批改，验证状态与保存。",
+  "completed_chapters": 2,
+  "completion_notifications": 1,
+  "certificates": 1
+}

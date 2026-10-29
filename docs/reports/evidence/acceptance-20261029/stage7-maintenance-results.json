@@ -1,0 +1,11 @@
+{
+  "tested_at": "2026-10-29T13:26:13.868105+08:00",
+  "http_requests": 19,
+  "checks": [
+    "管理员写权限及两个设置持久化",
+    "注册关闭后端拒绝、重开可注册、测试结束恢复设置",
+    "已有证书平台名称快照保持",
+    "六项前端资源由本地HTTP提供及本地PDF worker"
+  ],
+  "scope": "Remaining stage 7 settings and resources only"
+}

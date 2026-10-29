@@ -1,0 +1,9 @@
+{
+  "initial_dropdown": "No data",
+  "refresh_status": 422,
+  "refresh_media_type": "[object PointerEvent]",
+  "type_switch_recovers": true,
+  "email_error": "[{\"type\":\"value_error\",\"loc\":[\"body\",\"email\"],\"msg\":\"value is not a valid email address: An email address must have an @-sign.\",\"input\":\"invalid\",\"ctx\":{\"reason\":\"An email address must have an @-sign.\"}}]",
+  "email_status": 422,
+  "email_restored": true
+}

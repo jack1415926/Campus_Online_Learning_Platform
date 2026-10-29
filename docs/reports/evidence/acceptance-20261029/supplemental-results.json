@@ -1,0 +1,28 @@
+{
+  "tested_at": "2026-10-29T13:59:07.846483+08:00",
+  "checks": [
+    "Restored UI fixture matches source: course",
+    "Restored UI fixture matches source: homework",
+    "Restored UI fixture matches source: grade",
+    "Restored UI fixture matches source: certificate",
+    "Restored UI fixture matches source: discussion",
+    "Restored UI fixture matches source: private_messages",
+    "large.png: 5MB + 1 byte rejected with 413",
+    "large.mp4: 200MB + 1 byte rejected with 413",
+    "large.pdf: 20MB + 1 byte rejected with 413",
+    "large.docx: 20MB + 1 byte rejected with 413",
+    "Correctly signed expired access token rejected with 401"
+  ],
+  "http_requests": 9,
+  "manual_accounts_preserved": [
+    "admin1",
+    "teacher1",
+    "teacher2",
+    "teacher3",
+    "teacher4",
+    "student1",
+    "student2",
+    "student3"
+  ],
+  "settings_restored": true
+}

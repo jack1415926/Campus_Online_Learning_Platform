@@ -1,0 +1,224 @@
+[
+  {
+    "name": "bootstrap",
+    "started_at": "2026-10-29T13:25:45.630555+08:00",
+    "exit_code": 0,
+    "status": "PASS",
+    "summary": null,
+    "log": "docs/reports/evidence/acceptance-20261029\\bootstrap.log"
+  },
+  {
+    "name": "stage3",
+    "started_at": "2026-10-29T13:25:47.500510+08:00",
+    "exit_code": 0,
+    "status": "PASS",
+    "summary": {
+      "tested_at": "2026-10-29T05:25:53.911357+00:00",
+      "python": "3.12.14",
+      "mysql": "8.4.11",
+      "migration": "e8f9a0b1c2d3",
+      "prefix": "p3_3dd63fdf",
+      "course_id": "6e32400c-a46c-4124-883c-54a40407eab2",
+      "course_title": "p3_3dd63fdf_校园课程",
+      "asset_id": "07ffacdb-c587-4345-841e-2bfcd974ac56",
+      "word_asset_id": "12d77d5d-4620-40a7-8c88-8248481d3655",
+      "http_requests": 113,
+      "checks": [
+        {
+          "name": "注册、重复账号、公开注册不得提权、待审教师不得建课或考核",
+          "status": "PASS"
+        },
+        {
+          "name": "个人资料格式与唯一性校验、更新持久化、密码摘要、过期凭据拒绝",
+          "status": "PASS"
+        },
+        {
+          "name": "教师审核驳回原因、重新通过、已有登录立即取得教师权限",
+          "status": "PASS"
+        },
+        {
+          "name": "教师本人草稿管理、空课不能审核、其他教师和学生不能修改",
+          "status": "PASS"
+        },
+        {
+          "name": "资料仅本人管理、不可盗用附件、扩展名校验、引用资料不可删除",
+          "status": "PASS"
+        },
+        {
+          "name": "课程提交、教师不能自发布、管理员驳回与重新审核发布",
+          "status": "PASS"
+        },
+        {
+          "name": "学生可检索公开课程简介、大纲，未加入不能读正文或资料，旧静态地址关闭",
+          "status": "PASS"
+        },
+        {
+          "name": "并发重复加入唯一、新会话读取审核和发布状态、我的课程显示名称",
+          "status": "PASS"
+        },
+        {
+          "name": "课程附件签名链接、Range读取、不可换资源ID或充当登录令牌",
+          "status": "PASS"
+        },
+        {
+          "name": "DOCX上传关联与成员下载，章节和资料类型一致",
+          "status": "PASS"
+        },
+        {
+          "name": "发布内容冻结，已有成员不能退回草稿，学生不能编辑课程",
+          "status": "PASS"
+        },
+        {
+          "name": "归档保留成员历史，停止新加入和学习写入",
+          "status": "PASS"
+        },
+        {
+          "name": "停用即时失效、启用后旧会话不得复活",
+          "status": "PASS"
+        },
+        {
+          "name": "修改密码与退出撤销会话，刷新令牌不能绕过撤销",
+          "status": "PASS"
+        }
+      ],
+      "scope": "Stage 3 only; no full learning/exam acceptance"
+    },
+    "log": "docs/reports/evidence/acceptance-20261029\\stage3.log"
+  },
+  {
+    "name": "stage4",
+    "started_at": "2026-10-29T13:25:54.068971+08:00",
+    "exit_code": 0,
+    "status": "PASS",
+    "summary": {
+      "tested_at": "2026-10-29T05:25:57.319694+00:00",
+      "mysql": "8.4.11",
+      "course_id": "9401057a-a162-4a67-a4ce-589e9af81682",
+      "homework_id": "06181dcb-72d5-49f5-b686-a6f4c42bafa1",
+      "ui_homework_id": "fa3348e0-af8c-4c8e-9a8e-f298dbf7f513",
+      "http_requests": 80,
+      "checks": [
+        "草稿作业CRUD、归属与成员范围、发布冻结、截止时间时区校验",
+        "两章50%与100%、完成通知一次、并发重复完成唯一、续播位置持久化、非法进度拒绝",
+        "文字/单附件提交修改删除、超限与伪格式拒绝、附件仅本人和任课教师读取",
+        "两学生提交、零分已批与未批区分、评分范围、重复批改通知去重、新会话持久化、教师学生表",
+        "归档保留作业历史并停止新提交"
+      ],
+      "scope": "Stage 4; exams remain stage 5"
+    },
+    "log": "docs/reports/evidence/acceptance-20261029\\stage4.log"
+  },
+  {
+    "name": "stage5",
+    "started_at": "2026-10-29T13:25:57.448202+08:00",
+    "exit_code": 0,
+    "status": "PASS",
+    "summary": {
+      "tested_at": "2026-10-29T05:26:01.396284+00:00",
+      "course_id": "d6a0b85d-5d82-460a-8b79-fb4a6ec8c9dc",
+      "exam_id": "557a7080-b46e-46d0-9aef-36d1de6ac5cd",
+      "record_id": "a009e0ad-b539-4f4e-b148-dd473c2774d5",
+      "draft_course_id": "51870f0f-8014-46d3-b5bb-f702030e6c0d",
+      "bank_id": "4267cff1-5098-4a74-9e34-3bd83a554aa8",
+      "question_ids": [
+        "42c72bed-12f4-4888-93ed-c6e4722a9d75",
+        "bf38442c-d285-477b-a946-51b7d5446c70",
+        "2f019ae5-4e4f-4368-b975-6579581c5a94",
+        "bbe109d3-8072-4ade-9c4d-e98ee97bce4e",
+        "236cdfc9-42d5-4ee9-a770-89f557c568c3"
+      ],
+      "http_requests": 76,
+      "checks": [
+        "四题型校验、题库归属、学生不得读取答案或跨教师修改",
+        "本人草稿手动组卷、逐题分值、开放时间/成员身份、发布后冻结",
+        "并发开始只建一次、刷新保持答案和服务器截止、作答不泄答案、题库修改不改变试卷快照",
+        "重复/卷外答案拒绝、漏答固定满分、重复交卷幂等、部分阅卷保持待批、零分和JSON批改持久化、最终百分比与通知去重",
+        "次数限制、截止后仅结算此前已保存答案、成绩列表与教师学生表一致"
+      ],
+      "scope": "Stage 5 manual four-type exams only",
+      "mysql": "8.4.11",
+      "migration": "e8f9a0b1c2d3"
+    },
+    "log": "docs/reports/evidence/acceptance-20261029\\stage5.log"
+  },
+  {
+    "name": "stage5-edge",
+    "started_at": "2026-10-29T13:26:01.574781+08:00",
+    "exit_code": 0,
+    "status": "PASS",
+    "summary": {
+      "http_requests": 18,
+      "checks": [
+        "考试关闭时间早于时长时使用较早截止",
+        "进入我的成绩时结算已过期尝试",
+        "归档停止开考、保存和交卷，保留历史"
+      ],
+      "status": "PASS"
+    },
+    "log": "docs/reports/evidence/acceptance-20261029\\stage5-edge.log"
+  },
+  {
+    "name": "stage6",
+    "started_at": "2026-10-29T13:26:04.218908+08:00",
+    "exit_code": 0,
+    "status": "PASS",
+    "summary": {
+      "tested_at": "2026-10-29T13:26:07.845957+08:00",
+      "course_id": "6a15a2d1-b977-4903-9f54-5fe57bcda583",
+      "topic_id": "ea66f9ae-da52-436a-b2c8-cd09eeff0c08",
+      "http_requests": 73,
+      "checks": [
+        "成员/归属/发布状态、纯文本保存、作者删除、删除主题隐藏回复、回复通知与已读",
+        "任课教师和管理员按范围管理讨论、其他教师被拦截、时间分页",
+        "师生双向私信、发送者/接收者限定、管理员也不得读正文、通知不含私信正文、已读持久化",
+        "私信分页按发送时间排序，只标记实际返回的收件及其通知已读",
+        "课程ID绑定、讨论/私信历史保护、归档可读而禁止新内容"
+      ],
+      "mysql": "8.4.11",
+      "migration": "e8f9a0b1c2d3",
+      "scope": "Stage 6 only; no realtime/chat extensions"
+    },
+    "log": "docs/reports/evidence/acceptance-20261029\\stage6.log"
+  },
+  {
+    "name": "stage7",
+    "started_at": "2026-10-29T13:26:08.021013+08:00",
+    "exit_code": 0,
+    "status": "PASS",
+    "summary": {
+      "tested_at": "2026-10-29T13:26:11.737918+08:00",
+      "course_id": "6a564892-c9d1-4af9-9c3f-310149c904f4",
+      "certificate_id": "527c4c17-bcc5-4689-acae-53c695a2ed55",
+      "http_requests": 77,
+      "checks": [
+        "草稿配置本课程考核、跨课程/教师拒绝、发布后冻结、学生与教师数据范围",
+        "缺章节、未交/待批作业、未通过/部分阅卷不能领取；作业0分已批有效；最终成绩禁止改分",
+        "并发/重复领取唯一、新数据库会话持久化、姓名快照、教师颁发列表与学生隔离",
+        "发证课程不可退回草稿；归档保留已发证书且停止新发",
+        "无必交作业不增加作业条件"
+      ],
+      "mysql": "8.4.11",
+      "migration": "e8f9a0b1c2d3",
+      "scope": "Stage 7 batch 1: certificates only"
+    },
+    "log": "docs/reports/evidence/acceptance-20261029\\stage7.log"
+  },
+  {
+    "name": "stage7-maintenance",
+    "started_at": "2026-10-29T13:26:11.877293+08:00",
+    "exit_code": 0,
+    "status": "PASS",
+    "summary": {
+      "tested_at": "2026-10-29T13:26:13.868105+08:00",
+      "http_requests": 19,
+      "checks": [
+        "管理员写权限及两个设置持久化",
+        "注册关闭后端拒绝、重开可注册、测试结束恢复设置",
+        "已有证书平台名称快照保持",
+        "六项前端资源由本地HTTP提供及本地PDF worker"
+      ],
+      "scope": "Remaining stage 7 settings and resources only"
+    },
+    "log": "docs/reports/evidence/acceptance-20261029\\stage7-maintenance.log"
+  }
+]

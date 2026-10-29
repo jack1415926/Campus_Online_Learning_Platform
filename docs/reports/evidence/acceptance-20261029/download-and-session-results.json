@@ -1,0 +1,10 @@
+{
+  "browser": "Installed Chrome with Playwright fallback",
+  "agent_browser_control_download": "canceled for both product attachment and injected plain text control",
+  "download_failure": null,
+  "attachment_bytes_match": true,
+  "revoked_me_status": 401,
+  "revoked_reload_body": "",
+  "revoked_reload_login_inputs": 0,
+  "second_reload_recovers": true
+}

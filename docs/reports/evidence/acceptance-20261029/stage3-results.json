@@ -1,0 +1,71 @@
+{
+  "tested_at": "2026-10-29T05:25:53.911357+00:00",
+  "python": "3.12.14",
+  "mysql": "8.4.11",
+  "migration": "e8f9a0b1c2d3",
+  "prefix": "p3_3dd63fdf",
+  "course_id": "6e32400c-a46c-4124-883c-54a40407eab2",
+  "course_title": "p3_3dd63fdf_校园课程",
+  "asset_id": "07ffacdb-c587-4345-841e-2bfcd974ac56",
+  "word_asset_id": "12d77d5d-4620-40a7-8c88-8248481d3655",
+  "http_requests": 113,
+  "checks": [
+    {
+      "name": "注册、重复账号、公开注册不得提权、待审教师不得建课或考核",
+      "status": "PASS"
+    },
+    {
+      "name": "个人资料格式与唯一性校验、更新持久化、密码摘要、过期凭据拒绝",
+      "status": "PASS"
+    },
+    {
+      "name": "教师审核驳回原因、重新通过、已有登录立即取得教师权限",
+      "status": "PASS"
+    },
+    {
+      "name": "教师本人草稿管理、空课不能审核、其他教师和学生不能修改",
+      "status": "PASS"
+    },
+    {
+      "name": "资料仅本人管理、不可盗用附件、扩展名校验、引用资料不可删除",
+      "status": "PASS"
+    },
+    {
+      "name": "课程提交、教师不能自发布、管理员驳回与重新审核发布",
+      "status": "PASS"
+    },
+    {
+      "name": "学生可检索公开课程简介、大纲，未加入不能读正文或资料，旧静态地址关闭",
+      "status": "PASS"
+    },
+    {
+      "name": "并发重复加入唯一、新会话读取审核和发布状态、我的课程显示名称",
+      "status": "PASS"
+    },
+    {
+      "name": "课程附件签名链接、Range读取、不可换资源ID或充当登录令牌",
+      "status": "PASS"
+    },
+    {
+      "name": "DOCX上传关联与成员下载，章节和资料类型一致",
+      "status": "PASS"
+    },
+    {
+      "name": "发布内容冻结，已有成员不能退回草稿，学生不能编辑课程",
+      "status": "PASS"
+    },
+    {
+      "name": "归档保留成员历史，停止新加入和学习写入",
+      "status": "PASS"
+    },
+    {
+      "name": "停用即时失效、启用后旧会话不得复活",
+      "status": "PASS"
+    },
+    {
+      "name": "修改密码与退出撤销会话，刷新令牌不能绕过撤销",
+      "status": "PASS"
+    }
+  ],
+  "scope": "Stage 3 only; no full learning/exam acceptance"
+}

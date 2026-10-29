@@ -1,0 +1,578 @@
+{
+  "title": "校园在线学习平台全流程验收",
+  "finished_at": "2026-10-29T14:06:22.050143+08:00",
+  "revision": "131baee8d1d173f4718dee0d09fb93bedc251202",
+  "environment": {
+    "python": "3.12.14",
+    "mysql": "8.4.11",
+    "migration": "e8f9a0b1c2d3",
+    "base_url": "http://127.0.0.1:20081/",
+    "database": "127.0.0.1:3309/campus_learning",
+    "frontend": "Vue3 / Element Plus / local static assets"
+  },
+  "overall": "FAIL",
+  "scenario_counts": {
+    "PASS": 12,
+    "FAIL": 2,
+    "NOT_RUN": 0
+  },
+  "requirement_counts": {
+    "PASS": 42,
+    "FAIL": 2,
+    "PARTIAL": 1
+  },
+  "unit_tests": {
+    "passed": 5,
+    "failed": 0
+  },
+  "http_regression": {
+    "stage_requests": 456,
+    "supplemental_requests": 9,
+    "total": 465,
+    "failed": 0,
+    "note": "Only counted scripted checks; browser/background/setup requests excluded"
+  },
+  "issues": [
+    {
+      "id": "ISSUE-01",
+      "priority": "P2",
+      "title": "教师素材库禁止上传需求允许的 DOCX",
+      "cases": [
+        "AT-03"
+      ],
+      "steps": [
+        "使用已审核教师进入素材库，选中一个管理员已创建的分类。",
+        "选择合法 sample.docx 文件。"
+      ],
+      "expected": "允许上传DOCX，并可关联课程供学生下载。",
+      "actual": "前端在发起上传前提示“Word/PPT 不支持在线预览，请先用 Office 将文件另存为 PDF 后再上传”。后端与学生已有DOCX下载均通过。",
+      "source": "backend/static/js/app.js:2101",
+      "evidence": [
+        "screenshots/ISSUE-01-docx-upload.png",
+        "docx-page-result.json"
+      ],
+      "recommendation": "将DOCX加入文件选择范围，并移除对DOCX的前置阻止；保留后端类型、大小与文件头校验。"
+    },
+    {
+      "id": "ISSUE-02",
+      "priority": "P2",
+      "title": "新章节默认视频素材为空，刷新发送错误类型",
+      "cases": [
+        "AT-03"
+      ],
+      "steps": [
+        "教师先上传 sample.mp4。",
+        "进入本人草稿课程，点击添加章节，保持默认“视频”，打开关联素材。",
+        "点击素材旁的刷新；再切换为文档后切回视频作对照。"
+      ],
+      "expected": "默认视频素材列表正常加载，刷新仍按当前内容类型查询。",
+      "actual": "初始下拉显示No data；刷新请求media_type=[object PointerEvent]，返回422，前端静默吞掉错误。切换内容类型后出现已有sample.mp4，确认文件并非不存在。",
+      "source": "backend/static/js/app.js:302;420;506",
+      "evidence": [
+        "screenshots/ISSUE-02-empty-video-picker.png",
+        "screenshots/ISSUE-02-type-switch-recovers.png",
+        "issue-reproductions.json"
+      ],
+      "recommendation": "打开添加章节时加载当前类型；刷新显式传入当前章节类型；查询失败应给出可理解提示。"
+    },
+    {
+      "id": "ISSUE-03",
+      "priority": "P2",
+      "title": "登录会话失效后首次刷新显示空白页",
+      "cases": [
+        "AT-02"
+      ],
+      "steps": [
+        "在浏览器A登录一个测试学生并进入课程。",
+        "在独立浏览器上下文B登录同一账号，使A会话失效。",
+        "刷新A；再刷新一次作对照。"
+      ],
+      "expected": "旧会话请求被拒绝后立即显示登录页面或明确重新登录提示。",
+      "actual": "/auth/me返回401且本地令牌清除，但首次刷新body文本为空，登录输入框数量0；再刷新一次才恢复登录页。用安装版Chrome和真实两次登录独立复现，未注入伪造页面状态。",
+      "source": "backend/static/js/app.js:2294; backend/static/js/api.js:28",
+      "evidence": [
+        "screenshots/ISSUE-03-revoked-login-blank.png",
+        "screenshots/ISSUE-03-second-refresh-recovers.png",
+        "download-and-session-results.json"
+      ],
+      "recommendation": "使登录失效状态参与页面响应式更新，确保身份加载失败时立即渲染登录页。"
+    },
+    {
+      "id": "ISSUE-04",
+      "priority": "P3",
+      "title": "无效邮箱错误直接展示英文校验JSON",
+      "cases": [
+        "AT-02"
+      ],
+      "steps": [
+        "登录后进入个人中心，等待原资料加载完成。",
+        "将邮箱改为invalid并保存。"
+      ],
+      "expected": "显示“邮箱格式不正确”等简洁中文字段提示。",
+      "actual": "后端正确返回422、没有保存无效邮箱，但页面直接显示包含type/loc/msg/ctx的英文JSON数组；测试后已恢复测试账号邮箱。",
+      "source": "backend/static/js/api.js:51",
+      "evidence": [
+        "screenshots/ISSUE-04-raw-email-error.png",
+        "issue-reproductions.json"
+      ],
+      "recommendation": "将结构化校验错误转换为字段对应的中文提示，保留原始信息供诊断日志使用。"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "AT-01",
+      "title": "注册、教师审核与重复注册",
+      "status": "PASS",
+      "result": "学生与教师页面注册；待审教师无教学入口；管理员驳回、通过后教师建课；重复及非法角色由接口拒绝。",
+      "screenshots": "01、04～06",
+      "api_evidence": "stage3"
+    },
+    {
+      "id": "AT-02",
+      "title": "资料、密码、退出、过期与停用",
+      "status": "FAIL",
+      "result": "资料刷新保留、新密码登录、退出与后端失效检查通过；旧会话失效后首次刷新出现空白页（ISSUE-03）。邮箱提示存在易用性缺陷（ISSUE-04）。",
+      "screenshots": "02～03、ISSUE-03、ISSUE-04",
+      "api_evidence": "stage3 / supplemental"
+    },
+    {
+      "id": "AT-03",
+      "title": "建课、封面、视频/文档、审核发布",
+      "status": "FAIL",
+      "result": "页面创建课程、上传封面/MP4/PDF、两章、作业与考试并完成驳回再发布；DOCX 页面上传被禁止（ISSUE-01），默认视频素材及刷新异常（ISSUE-02）。",
+      "screenshots": "07～11、ISSUE-01、ISSUE-02",
+      "api_evidence": "stage3"
+    },
+    {
+      "id": "AT-04",
+      "title": "搜索、加入、成员和教师归属权限",
+      "status": "PASS",
+      "result": "学生搜索课程、未加入时仅看简介、加入后解锁；两学生独立加入。重复加入及跨教师/未加入越权由接口和唯一记录验证。",
+      "screenshots": "12、23",
+      "api_evidence": "stage3 / stage4"
+    },
+    {
+      "id": "AT-05",
+      "title": "视频续播、PDF、DOCX、章节完成",
+      "status": "PASS",
+      "result": "5.055秒真实视频，允许1.5倍速；暂停1.484089秒，刷新恢复同位置；PDF画布714×1010；两章完成、新会话及重启后均保留；Chrome实际下载已有DOCX课程资料。教师上传缺陷单独计AT-03失败。",
+      "screenshots": "13～16、33、41",
+      "api_evidence": "stage3 / stage4"
+    },
+    {
+      "id": "AT-06",
+      "title": "作业提交、附件、修改、批改和截止",
+      "status": "PASS",
+      "result": "页面提交文字/PDF、修改并替换DOCX；教师批0分及评语，学生重登录可见；实际下载与原文件SHA256一致。截止后/批改后拒交及跨学生附件拒绝由接口验证。",
+      "screenshots": "17、20、25、37",
+      "api_evidence": "stage4"
+    },
+    {
+      "id": "AT-07",
+      "title": "四题型、开放时间、次数和刷新",
+      "status": "PASS",
+      "result": "页面创建单选、多选、判断与两道简答，手动选5题组卷；学生作答、保存与刷新恢复；数据库确认同一答卷/原截止/同一次尝试。未开放、超次数、未加入及较早截止由接口验证。",
+      "screenshots": "08～09、18～19",
+      "api_evidence": "stage5 / stage5-edge"
+    },
+    {
+      "id": "AT-08",
+      "title": "答案校验、固定满分、快照和重复交卷",
+      "status": "PASS",
+      "result": "页面保存与刷新后的五题答案一致；接口拒绝重复/卷外答案，验证漏答仍固定满分、重复交卷不重复计分、题库变更不改变试卷。",
+      "screenshots": "18～19",
+      "api_evidence": "stage5"
+    },
+    {
+      "id": "AT-09",
+      "title": "分批阅卷、零分和成绩持久化",
+      "status": "PASS",
+      "result": "客观7/17；先批一题0分仍待批/无结论，新数据库会话确认；另一题5分后最终12/17、通过。教师、学生、重启后新会话结果一致。",
+      "screenshots": "21～22、25",
+      "api_evidence": "stage5"
+    },
+    {
+      "id": "AT-10",
+      "title": "讨论、私信、删除范围和未读提醒",
+      "status": "PASS",
+      "result": "学生发主题、教师回复；HTML标签按文字展示；师生双向私信；通知不含私信正文，点击跳转主题/会话后未读5→4→3。删除权限、第三人/管理员正文拒绝及分页已读由接口验证。",
+      "screenshots": "26～30",
+      "api_evidence": "stage6"
+    },
+    {
+      "id": "AT-11",
+      "title": "两学生进度、作业、成绩和通知",
+      "status": "PASS",
+      "result": "教师同表看到学生一2/2、作业1/1、12/17通过；学生二0/2、未交、无最终成绩。完成一章时整课通知0条，全部完成后1条；重复完成不重复发。",
+      "screenshots": "14、16、23～24",
+      "api_evidence": "stage4 / stage5"
+    },
+    {
+      "id": "AT-12",
+      "title": "证书条件、领取、打印和去重",
+      "status": "PASS",
+      "result": "条件不足时按钮禁用；符合条件后页面领取、重开；证书打印PDF一页，已渲染检查中文姓名、课程、日期、编号。接口逐项验证缺章节/待批/考试未通过、并发及重复领取。",
+      "screenshots": "31～32、40",
+      "api_evidence": "stage7"
+    },
+    {
+      "id": "AT-13",
+      "title": "设置、注册开关、备份和独立恢复",
+      "status": "PASS",
+      "result": "页面改名、关闭注册、刷新保留；匿名页面注册入口消失；恢复原值。停应用备份并恢复至新库：36表、11项文件清单（含SQL），行数/摘要/业务抽样一致；另核对本轮课程、附件、成绩、证书、讨论、私信；服务正常重启。",
+      "screenshots": "34～35",
+      "api_evidence": "stage7-maintenance / supplemental / isolated restore"
+    },
+    {
+      "id": "AT-14",
+      "title": "依赖保护、归档、上传和跨用户权限",
+      "status": "PASS",
+      "result": "已颁证课程退回草稿被拒；页面归档后历史成绩、内容、证书可读；停止新增入口。接口覆盖归档拒写、关键对象删除保护、伪格式/越权拒绝；补测图片5MB、PDF/DOCX20MB、视频200MB各超1字节均413。",
+      "screenshots": "36、38～40",
+      "api_evidence": "stage3 / stage4 / stage5-edge / stage6 / supplemental"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "UM-01",
+      "description": "学生可使用唯一用户名、姓名、邮箱、密码注册并登录；重复用户名/邮箱明确拒绝，密码不以明文保存。",
+      "scenario": "AT-01",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "UM-02",
+      "description": "教师可注册并选择教师身份，账号进入待审核状态；管理员通过后获得教师权限，拒绝时可见原因。待审核账号不能创建课程或考核。",
+      "scenario": "AT-01",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "UM-03",
+      "description": "管理员可查看、搜索用户，审核教师、启用/停用账号、分配三个业务角色；普通注册请求不能自行获取管理员权限。",
+      "scenario": "AT-01",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "UM-04",
+      "description": "登录用户可查看和修改本人姓名、邮箱及密码；修改密码需验证原密码，邮箱格式和唯一性在后端验证。个人信息页面不再展示企业职级岗位。",
+      "scenario": "AT-02",
+      "status": "PASS",
+      "note": "功能通过，错误提示另记ISSUE-04"
+    },
+    {
+      "id": "UM-05",
+      "description": "退出清除客户端登录凭据；受保护接口拒绝无效/过期凭据，停用账号的已有凭据不能继续访问业务接口。",
+      "scenario": "AT-02",
+      "status": "PARTIAL",
+      "note": "后端拒绝失效凭据通过，页面恢复缺陷见ISSUE-03"
+    },
+    {
+      "id": "CM-01",
+      "description": "教师创建和编辑本人课程：名称、简介、课程大纲、封面；列表可按名称搜索并显示教师及发布状态。大纲可直接由章节标题与顺序形成。",
+      "scenario": "AT-03",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CM-02",
+      "description": "教师在本人草稿课程内添加、编辑、删除、排序章节；每章支持文字、视频或文档之一，能够上传封面与资料并预览/下载。",
+      "scenario": "AT-03",
+      "status": "FAIL",
+      "note": "DOCX上传/素材选择缺陷，见ISSUE-01/02"
+    },
+    {
+      "id": "CM-03",
+      "description": "课程按“草稿→待审核→已发布”流转；管理员可通过或驳回并填写原因。仅已发布课程进入学生课程列表；至少有一个有效章节才能提交审核。",
+      "scenario": "AT-03",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CM-04",
+      "description": "已发布课程的教学内容、题目及考核配置在本期冻结；需要修改时由管理员在无学生加入、无提交记录的情况下退回草稿。已有学习记录的课程只提供归档，不直接删除。",
+      "scenario": "AT-14",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CM-05",
+      "description": "上传限制在前后端一致：图片 JPG/PNG，视频 MP4，文档 PDF/DOCX；默认图片 5MB、文档/作业附件 20MB、视频 200MB。超限或格式错误给出明确提示，文件名不能用于目录穿越。",
+      "scenario": "AT-14",
+      "status": "FAIL",
+      "note": "前端DOCX选择与允许格式不一致；后端限制通过"
+    },
+    {
+      "id": "LM-01",
+      "description": "学生浏览已发布课程，按名称搜索、查看简介与大纲，点击“加入学习”进入我的课程；同一学生加入同一课程只产生一条成员关系。",
+      "scenario": "AT-04",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "LM-02",
+      "description": "已加入学生可从我的课程进入章节，播放视频、阅读文字、预览 PDF 或下载文档。未加入者只能查看简介，不能直接通过接口取得受限资料。",
+      "scenario": "AT-04",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "LM-03",
+      "description": "视频保存播放位置，重新进入时可以继续播放；视频播放结束可标记该章完成；文字和文档由学生点击“完成本章”。不增加人脸识别或复杂防快进要求。",
+      "scenario": "AT-05",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "LM-04",
+      "description": "章节详情可跳转本课程讨论、作业和考试；归档课程停止新加入与新提交，已加入学生仍可查看历史学习内容、成绩与证书。",
+      "scenario": "AT-05",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "AS-01",
+      "description": "教师为本人课程创建作业，填写标题、文字要求、截止时间、满分、评分说明及是否为必交作业；发布后学生可见。",
+      "scenario": "AT-06",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "AS-02",
+      "description": "已加入学生在截止时间前提交文字、一个附件或二者；至少有一项内容。截止前且尚未批改可修改提交，只保留一份当前提交，不实现版本历史。",
+      "scenario": "AT-06",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "AS-03",
+      "description": "教师查看本人课程提交列表、文字与附件，录入 0～满分之间的分数及评语；学生仅可查看自己的提交和批改结果。批改后刷新并重新登录仍保留成绩。",
+      "scenario": "AT-06",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "AS-04",
+      "description": "已截止不能新交或修改；未批改显示“待批改”，不能当作 0 分。发布后存在提交的作业不能删除或修改满分、必交标识。",
+      "scenario": "AT-06",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "EX-01",
+      "description": "教师维护本人题库，支持单选、多选、判断、简答四类；题干、选项、正确答案/参考答案、分值可录入。选择题至少两个有效选项，答案必须与选项匹配。",
+      "scenario": "AT-07",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "EX-02",
+      "description": "教师从本人题库手动组卷，考试绑定本人课程，设置标题、题目与分值、开放起止时间、答题时长、及格百分比、最多尝试次数和评分说明。",
+      "scenario": "AT-07",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "EX-03",
+      "description": "已加入学生在开放时间内开始考试；后端验证成员身份、考试时间和次数，截止点为“开考时间+答题时长”与关闭时间的较早者。前端显示倒计时并在到期时提交，不能仅依赖客户端时间。",
+      "scenario": "AT-07",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "EX-04",
+      "description": "客观题自动判分：单选/判断完全正确得分，多选与正确选项集合完全一致得分；简答题由教师人工批改。作答中不向学生返回正确答案和解析。",
+      "scenario": "AT-07",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "EX-05",
+      "description": "满分取本次考试固定题目分值总和，漏答计 0 分、不减少满分；重复题目答案与试卷外题目在后端拒绝；同一考试记录重复提交不得重复计分或占用额外次数。",
+      "scenario": "AT-08",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "EX-06",
+      "description": "含未批主观题时状态为“待批改”，不生成最终通过结论；教师可从页面进入待批记录，填写各题分数与评语，全部题目批改后才产生最终成绩和通过结果。",
+      "scenario": "AT-09",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "EX-07",
+      "description": "学生查看本人已提交记录、客观得分、待批状态及最终成绩；教师查看本人课程考试的提交人数、待批记录和最终成绩列表。最终成绩按“得分/固定满分×100”与及格百分比比较。",
+      "scenario": "AT-09",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "EX-08",
+      "description": "保存试卷时固定题目、题型、答案规则及分值，开考时再复制为答卷快照；后续题库修改不改变已发布试卷或已开始答卷，存在作答时不能删除试卷。",
+      "scenario": "AT-08",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CO-01",
+      "description": "每门课程提供独立讨论区，已加入学生与任课教师可发布文字主题；显示标题、内容、作者与时间，按时间分页。",
+      "scenario": "AT-10",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CO-02",
+      "description": "主题下可发表一级文字回复，学生可提问、分享心得，任课教师可答疑；不做多级楼中楼。",
+      "scenario": "AT-10",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CO-03",
+      "description": "作者可删除本人主题/回复，任课教师可删除本人课程违规内容，管理员可管理全部课程讨论；删除主题后其回复不再可见。",
+      "scenario": "AT-10",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "PM-01",
+      "description": "同一课程的学生与任课教师可互发纯文字私信，按对方查看往来记录，显示发送时间与已读/未读；不开放任意用户搜索和陌生人私信。",
+      "scenario": "AT-10",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "PM-02",
+      "description": "私信正文仅发送者与接收者可访问；普通课程成员不能通过猜测消息 ID 读取内容，页面按打开或刷新获取新消息，无需 WebSocket。",
+      "scenario": "AT-10",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CO-04",
+      "description": "作业批改完成、最终考试成绩发布、讨论主题收到他人回复、收到私信时提供站内未读提醒；刷新或打开对应页面可更新未读状态。通知不包含私信正文。",
+      "scenario": "AT-10",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "PR-01",
+      "description": "学生查看每门已加入课程的已完成章节数、总章节数和进度百分比；整课进度为已完成章节数/有效章节总数，视频播放位置单独保存。重复完成同一章不累计次数。",
+      "scenario": "AT-11",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "PR-02",
+      "description": "学生在课程内查看作业的未提交/待批改/已批改状态、分数，以及考试的未参加/进行中/待批改/通过/未通过状态。",
+      "scenario": "AT-11",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "PR-03",
+      "description": "教师查看本人课程的学生名单、各学生章节进度、作业状态与考试最终成绩；只需表格与必要筛选，不新增复杂看板或导出。",
+      "scenario": "AT-11",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "PR-04",
+      "description": "只有全部章节完成才设置“学习已完成”；首次从未完成变为完成时发送一次学习完成通知，不因单章完成提前发送，也不因重复请求重复发送。",
+      "scenario": "AT-11",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CE-01",
+      "description": "教师可为课程启用证书，并指定一场本课程考试作为结课考核；启用时必须配置有效考核。发布课程后冻结这些规则。",
+      "scenario": "AT-12",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CE-02",
+      "description": "已加入学生同时满足：全部有效章节完成、所有必交作业已提交且已批改、指定考试至少一次最终成绩及格，才可领取证书；其他考试不影响证书资格。无必交作业时不增加作业条件。",
+      "scenario": "AT-12",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CE-03",
+      "description": "学生点击领取，由后端重新核验条件并生成唯一证书；同一学生同一课程只能一份，重复点击或并发请求返回同一份记录。",
+      "scenario": "AT-12",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "CE-04",
+      "description": "证书显示编号、学生姓名、课程名称、颁发日期、平台名称；保存颁发时显示信息，学生可查看、打印或用浏览器另存 PDF。教师可查看本人课程颁发列表。",
+      "scenario": "AT-12",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "SY-01",
+      "description": "管理员集中处理待审核教师与课程，查看必要资料、通过或驳回；审核结果本人可见，审核操作记录操作人、对象、时间和结果。",
+      "scenario": "AT-01 / AT-03",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "SY-02",
+      "description": "系统设置只提供平台名称与是否开放注册；持久化后刷新仍生效，关闭注册后后端同步拒绝注册。上传限制使用部署配置，不做通用配置中心。",
+      "scenario": "AT-13",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "SY-03",
+      "description": "提供管理员执行的备份脚本与说明，备份 MySQL 业务库及上传文件，记录数据库版本、备份时间和文件清单，备份不放在可公开下载的 Web 目录。",
+      "scenario": "AT-13",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "SY-04",
+      "description": "提供恢复脚本与说明，在独立空库/目录恢复备份；恢复后抽查课程、作业附件、成绩和证书，验证记录与文件对应。覆盖目标前明确提示目标库与目录，不在普通页面上传 SQL 执行。",
+      "scenario": "AT-13",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    },
+    {
+      "id": "SY-05",
+      "description": "管理员可归档课程、停用用户；存在提交、成绩、证书等依赖时拒绝直接物理删除关键业务对象，并给出原因。保留操作追踪所需字段，不新增通用日志查询平台。",
+      "scenario": "AT-14",
+      "status": "PASS",
+      "note": "页面主流程与接口/数据库补充证据见对应AT场景"
+    }
+  ],
+  "restore": {
+    "database": "campus_restore_accept20261029",
+    "tables": 36,
+    "manifest_files_including_sql": 11,
+    "ui_business_checks": 6
+  },
+  "manual_accounts_preserved": true,
+  "settings_restored": true,
+  "application_restarted": true,
+  "source_code_changed": false,
+  "evidence_root": "docs/reports/evidence/acceptance-20261029",
+  "screenshots": 47,
+  "limits": [
+    "No clean OS installation / remote deployment / performance load or mobile-specific acceptance.",
+    "Some negative and concurrency scenarios verified through real HTTP and fresh DB sessions, not only page interactions.",
+    "Agent-browser recording unavailable because ffmpeg absent; screenshots, structured logs and reproduction steps retained."
+  ],
+  "handoff": {
+    "baseline_revision": "131baee8d1d173f4718dee0d09fb93bedc251202",
+    "product_code_changed": false,
+    "next_steps": [
+      "Fix ISSUE-01, ISSUE-02, ISSUE-03 and improve ISSUE-04",
+      "Rerun AT-02, AT-03 and affected paths only"
+    ],
+    "private_runtime_files_uploaded": false
+  }
+}
