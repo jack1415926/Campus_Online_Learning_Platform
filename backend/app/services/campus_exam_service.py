@@ -122,9 +122,11 @@ def submit(db, record, answers):
     results = []
     for q in record.question_snapshot:
         answer = submitted.get(q["id"])
-        subjective = q["type"] == "short_answer"
+        subjective = q["type"] == "short_answer" and isinstance(answer, str) and bool(answer.strip())
         if q["type"] == "multiple_choice":
             correct = set(answer or []) == set(q["correct_answer"])
+        elif q["type"] == "short_answer":
+            correct = False
         else:
             correct = answer == q["correct_answer"]
         results.append({"question_id": q["id"], "answer": answer, "score": q["score"] if correct and not subjective else 0.0, "is_correct": None if subjective else correct, "graded": not subjective, "grader_comment": None})
@@ -194,6 +196,9 @@ def grade(db, record, body, grader_id):
     ids = [a.question_id for a in body.answers]
     if len(set(ids)) != len(ids) or any(q not in questions or questions[q]["type"] != "short_answer" for q in ids):
         raise HTTPException(422, "只能批改本卷简答题，题目不能重复")
+    saved = {a["question_id"]: a for a in record.answers}
+    if any(not isinstance(saved[q].get("answer"), str) or not saved[q]["answer"].strip() for q in ids):
+        raise HTTPException(409, "空白简答题已自动判0分，无需人工批改")
     if any(a.score > questions[a.question_id]["score"] for a in body.answers):
         raise HTTPException(422, "分数不能超过该题满分")
     updates = {a.question_id: a for a in body.answers}

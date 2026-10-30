@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-30",
+  "scope": "targeted checks only; not a new full acceptance",
+  "results": {
+    "chapter-order-results": {
+      "http_requests": 15,
+      "checks": [
+        "调整顺序后接口返回新顺序",
+        "新数据库会话重读顺序",
+        "其他教师不能调整",
+        "非法顺序拒绝",
+        "发布后不能调整"
+      ]
+    },
+    "demo-check-results": {
+      "http_requests": 18,
+      "checks": [
+        "four accounts and expected roles",
+        "two chapters and required homework",
+        "published five-question exam and certificate setting",
+        "both students enrolled and initial certificate unavailable",
+        "initializer rerun preserved manifest and progress"
+      ]
+    },
+    "blank-short-answers-results": {
+      "http_requests": 30,
+      "checks": [
+        "空值、空串、空白、全角空格、空列表及漏答自动0分",
+        "有内容的简答题仍待人工批改",
+        "空白题不可人工改分",
+        "超时结算只用已保存草稿",
+        "重复交卷、通知去重和新MySQL会话持久化"
+      ]
+    },
+    "stage5-results": {
+      "http_requests": 76,
+      "checks": [
+        "四题型校验、题库归属、学生不得读取答案或跨教师修改",
+        "本人草稿手动组卷、逐题分值、开放时间/成员身份、发布后冻结",
+        "并发开始只建一次、刷新保持答案和服务器截止、作答不泄答案、题库修改不改变试卷快照",
+        "重复/卷外答案拒绝、漏答固定满分、重复交卷幂等、部分阅卷保持待批、零分和JSON批改持久化、最终百分比与通知去重",
+        "次数限制、截止后仅结算此前已保存答案、成绩列表与教师学生表一致"
+      ]
+    }
+  }
+}

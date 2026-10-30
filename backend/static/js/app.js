@@ -304,6 +304,7 @@ const CourseDetailPage = {
           <div v-if="chForm.content_ref_id" style="margin-top:8px;color:#67c23a;font-size:13px">已选择: {{ selectedMediaName }}</div>
         </el-form-item>
         <el-form-item label="学时(分钟)"><el-input-number v-model="chForm.estimated_minutes" :min="0" /></el-form-item>
+        <el-form-item label="顺序（数字越小越靠前）"><el-input-number v-model="chForm.sort_order" :min="0" :max="1000000" :precision="0" /></el-form-item>
         <el-form-item label="必修"><el-switch v-model="chForm.is_required" /></el-form-item>
       </el-form>
       <template #footer><el-button @click="showAddCh=false">取消</el-button><el-button type="primary" @click="doAddCh">添加</el-button></template>
@@ -319,10 +320,11 @@ const CourseDetailPage = {
             <el-select v-model="editChForm.content_ref_id" filterable clearable placeholder="选择素材库中的文件" style="flex:1">
               <el-option v-for="m in mediaList" :key="m.id" :label="m.name" :value="m.id"><span>{{ m.name }}</span><el-tag size="small" style="margin-left:8px">{{ m.media_type }}</el-tag></el-option>
             </el-select>
-            <el-button @click="loadMedia">刷新</el-button>
+            <el-button @click="loadMedia(editChForm.content_type)">刷新</el-button>
           </div>
         </el-form-item>
         <el-form-item label="学时(分钟)"><el-input-number v-model="editChForm.estimated_minutes" :min="0" /></el-form-item>
+        <el-form-item label="顺序（数字越小越靠前）"><el-input-number v-model="editChForm.sort_order" :min="0" :max="1000000" :precision="0" /></el-form-item>
         <el-form-item label="必修"><el-switch v-model="editChForm.is_required" /></el-form-item>
       </el-form>
       <template #footer><el-button @click="showEditCh=false">取消</el-button><el-button type="primary" @click="doEditCh">保存</el-button></template>
@@ -353,7 +355,7 @@ const CourseDetailPage = {
     const chapterRecords = ref([]); let videoElement=null, lastVideoSave=0, videoSaving=false;
     const editForm = reactive({ title:"", description:"", difficulty:"beginner", estimated_minutes:0, instructor:"" });
     const chForm = reactive({ title:"", content_type:"video", text_content:"", content_ref_id:"", estimated_minutes:10, is_required:true, sort_order:0 });
-    const editChForm = reactive({ title:"", content_type:"video", text_content:"", content_ref_id:"", estimated_minutes:0, is_required:true });
+    const editChForm = reactive({ title:"", content_type:"video", text_content:"", content_ref_id:"", estimated_minutes:0, is_required:true, sort_order:0 });
     const mediaList = ref([]);
     const selectedMediaName = computed(() => { const m = mediaList.value.find(x => x.id === chForm.content_ref_id); return m ? m.name : ""; });
     const videoUrl = ref(""); const docUrl = ref(""); const docFileName = ref(""); const imageUrl = ref(""); const pdfCanvas = ref(null); let learnSeconds = 0; let maxWatchedTime = 0; const videoCompleted = ref(false); const videoDuration = ref(0); const pdfDoc = shallowRef(null); const pdfPageNum = ref(1); const pdfTotalPages = ref(0); const pdfScale = ref(1.2); const pdfLoading = ref(false);
@@ -503,16 +505,16 @@ const CourseDetailPage = {
     const doDelete = async () => { try { await ElMessageBox.confirm("确认删除课程？", "提示", { type: "warning" }); await api.deleteCourse(props.id); ElMessage.success("删除成功"); navigate("courses"); } catch(e) { if (e !== "cancel") ElMessage.error(e.message); } };
     const publish = async (action) => { try { let reason="";if(action==='reject'){const r=await ElMessageBox.prompt("请填写驳回原因","课程审核",{inputValidator:v=>!!v?.trim()||"原因不能为空"});reason=r.value;} await api.publishCourse(props.id, action, reason); ElMessage.success("操作成功"); load(); } catch(e) { ElMessage.error(e.message); } };
 
-    const openAddCh = () => { chForm.title=""; chForm.content_type="video"; chForm.text_content=""; chForm.content_ref_id=""; chForm.estimated_minutes=10; chForm.is_required=true; showAddCh.value = true; loadMedia(chForm.content_type); };
+    const openAddCh = () => { chForm.title=""; chForm.content_type="video"; chForm.text_content=""; chForm.content_ref_id=""; chForm.estimated_minutes=10; chForm.is_required=true; chForm.sort_order=Math.max(0,...(course.value?.chapters||[]).map(ch=>ch.sort_order||0))+1; showAddCh.value = true; loadMedia(chForm.content_type); };
     const doAddCh = async () => {
       if (!chForm.title) return ElMessage.warning("请输入章节标题");
-      try { chForm.sort_order = (course.value.chapters||[]).length + 1; await api.addChapter(props.id, { ...chForm }); ElMessage.success("添加成功"); showAddCh.value = false; load(); } catch(e) { ElMessage.error(e.message); }
+      try { await api.addChapter(props.id, { ...chForm }); ElMessage.success("添加成功"); showAddCh.value = false; load(); } catch(e) { ElMessage.error(e.message); }
     };
     const delChapter = async (ch) => { try { await ElMessageBox.confirm("确认删除章节？", "提示", { type: "warning" }); await api.deleteChapter(props.id, ch.id); ElMessage.success("删除成功"); load(); } catch(e) { if (e !== "cancel") ElMessage.error(e.message); } };
 
     const openEditCh = (ch) => {
       editingChapter = ch;
-      Object.assign(editChForm, { title: ch.title, content_type: ch.content_type, text_content: ch.text_content||"", content_ref_id: ch.content_ref_id||"", estimated_minutes: ch.estimated_minutes, is_required: ch.is_required });
+      Object.assign(editChForm, { title: ch.title, content_type: ch.content_type, text_content: ch.text_content||"", content_ref_id: ch.content_ref_id||"", estimated_minutes: ch.estimated_minutes, is_required: ch.is_required, sort_order: ch.sort_order });
       if (ch.content_type === "video" || ch.content_type === "document" || ch.content_type === "image") loadMedia(ch.content_type);
       showEditCh.value = true;
     };

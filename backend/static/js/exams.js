@@ -38,10 +38,10 @@ const CampusExamPanel = {
           <p v-for="o in q.options||[]" :key="o.key">{{o.key}}. {{o.text}}</p>
           <p style="white-space:pre-wrap">学生答案：{{format(answerFor(q.id)?.answer)}}</p><p v-if="q.correct_answer!==undefined" style="white-space:pre-wrap">{{q.type==='short_answer'?'参考答案':'正确答案'}}：{{format(q.correct_answer)}}</p>
           <p v-if="answerFor(q.id)?.graded">得分：{{answerFor(q.id).score}}　评语：{{answerFor(q.id).grader_comment||'无'}}</p><p v-else>待批改</p>
-          <div v-if="course.can_manage&&q.type==='short_answer'&&detail.status==='submitted'"><el-input-number v-model="grading[q.id].score" :min="0" :max="q.score" :aria-label="'给简答题评分：'+q.content"/><el-input v-model="grading[q.id].grader_comment" type="textarea" placeholder="教师评语"/></div>
+          <div v-if="course.can_manage&&canGrade(q)&&detail.status==='submitted'"><el-input-number v-model="grading[q.id].score" :min="0" :max="q.score" :aria-label="'给简答题评分：'+q.content"/><el-input v-model="grading[q.id].grader_comment" type="textarea" placeholder="教师评语"/></div>
         </div>
         <p v-if="detail.status==='graded'">最终成绩已发布，不再重新评分。</p>
-        <el-button v-if="course.can_manage&&detail.status==='submitted'&&detail.questions.some(q=>q.type==='short_answer')" type="primary" :loading="busy" @click="saveGrade">保存批改</el-button>
+        <el-button v-if="course.can_manage&&detail.status==='submitted'&&detail.questions.some(canGrade)" type="primary" :loading="busy" @click="saveGrade">保存批改</el-button>
       </template>
     </el-dialog>
   </el-card>`,
@@ -60,10 +60,11 @@ const CampusExamPanel = {
     const loadRecords=async()=>{try{if(props.course.can_manage){const r=await api.examRecords(selectedExam.value.id,recordPage.value);records.value=r.items;recordTotal.value=r.meta.total;}else{const r=await api.getMyExamRecords(selectedExam.value.id);recordTotal.value=r.length;records.value=r.slice((recordPage.value-1)*20,recordPage.value*20);}}catch(e){error(e);}};
     const openRecords=async e=>{selectedExam.value=e;recordPage.value=1;await loadRecords();showRecords.value=true;};
     const answerFor=id=>detail.value?.answers?.find(a=>a.question_id===id);
+    const canGrade=q=>q.type==='short_answer'&&typeof answerFor(q.id)?.answer==='string'&&!!answerFor(q.id).answer.trim();
     const viewRecord=async row=>{try{detail.value=await api.getExamRecord(row.id);for(const q of detail.value.questions){const a=answerFor(q.id);grading[q.id]={score:a?.graded?a.score:null,grader_comment:a?.grader_comment||''};}showDetail.value=true;}catch(e){error(e);}};
-    const saveGrade=async()=>{const answers=detail.value.questions.filter(q=>q.type==='short_answer'&&grading[q.id].score!==null&&grading[q.id].score!==undefined).map(q=>({question_id:q.id,...grading[q.id]}));if(!answers.length)return ElementPlus.ElMessage.warning('请为至少一道简答题填写分数，允许0分');busy.value=true;try{await api.gradeExam(detail.value.id,{answers});await viewRecord({id:detail.value.id});await loadRecords();ElementPlus.ElMessage.success('批改已保存');}catch(e){error(e);}finally{busy.value=false;}};
+    const saveGrade=async()=>{const answers=detail.value.questions.filter(q=>canGrade(q)&&grading[q.id].score!==null&&grading[q.id].score!==undefined).map(q=>({question_id:q.id,...grading[q.id]}));if(!answers.length)return ElementPlus.ElMessage.warning('请为至少一道简答题填写分数，允许0分');busy.value=true;try{await api.gradeExam(detail.value.id,{answers});await viewRecord({id:detail.value.id});await loadRecords();ElementPlus.ElMessage.success('批改已保存');}catch(e){error(e);}finally{busy.value=false;}};
     const format=value=>Array.isArray(value)?value.join('、'):value??'未作答';
     onMounted(load);watch(()=>props.course.can_learn,load);
-    return{exams,total,page,showEdit,editing,busy,banks,bankId,questions,questionPage,questionTotal,selectedIds,scores,form,showRecords,records,recordPage,recordTotal,showDetail,detail,grading,types,statuses,load,loadQuestions,editExam,saveExam,remove,openRecords,loadRecords,viewRecord,answerFor,saveGrade,format};
+    return{exams,total,page,showEdit,editing,busy,banks,bankId,questions,questionPage,questionTotal,selectedIds,scores,form,showRecords,records,recordPage,recordTotal,showDetail,detail,grading,types,statuses,load,loadQuestions,editExam,saveExam,remove,openRecords,loadRecords,viewRecord,answerFor,canGrade,saveGrade,format};
   }
 };

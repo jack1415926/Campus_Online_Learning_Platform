@@ -100,9 +100,9 @@ def main():
 
     call(s,'POST',f'/api/v1/exams/records/{rid}/submit',422,json={'answers':[answers[0],answers[0]]})
     call(s,'POST',f'/api/v1/exams/records/{rid}/submit',422,json={'answers':[{'question_id':str(uuid.uuid4()),'answer':'A'}]})
-    result=call(s,'POST',f'/api/v1/exams/records/{rid}/submit',json={'answers':answers[:3]}).json()
-    assert result['max_score']==17 and result['total_score']==8 and result['status']=='submitted' and result['is_pass'] is None and len(result['answers'])==5
-    assert call(s,'POST',f'/api/v1/exams/records/{rid}/submit',json={'answers':[]}).json()['total_score']==8
+    result=call(s,'POST',f'/api/v1/exams/records/{rid}/submit',json={'answers':[answers[0],answers[1],answers[3],answers[4]]}).json()
+    assert result['max_score']==17 and result['total_score']==7 and result['status']=='submitted' and result['is_pass'] is None and len(result['answers'])==5
+    assert call(s,'POST',f'/api/v1/exams/records/{rid}/submit',json={'answers':[]}).json()['total_score']==7
     call(s,'PUT',f'/api/v1/exams/records/{rid}/draft',409,json={'answers':[]})
     gpath=f'/api/v1/exams/records/{rid}/grade'
     call(other,'POST',gpath,403,json={'answers':[{'question_id':ids[3],'score':0}]})
@@ -112,13 +112,13 @@ def main():
     partial=call(t,'POST',gpath,json={'answers':[{'question_id':ids[3],'score':0,'grader_comment':'零分也已批改'}]}).json()
     assert partial['status']=='submitted' and partial['is_pass'] is None
     final=call(t,'POST',gpath,json={'answers':[{'question_id':ids[4],'score':5,'grader_comment':'第二题已批'}]}).json()
-    assert final['status']=='graded' and final['total_score']==13 and final['is_pass'] is True
+    assert final['status']=='graded' and final['total_score']==12 and final['is_pass'] is True
     call(t,'POST',gpath,json={'answers':[{'question_id':ids[4],'score':5,'grader_comment':'第二题已批'}]})
     visible=call(s,'GET',f'/api/v1/exams/records/{rid}').json()
-    assert visible['total_score']==13 and visible['is_pass'] is True
+    assert visible['total_score']==12 and visible['is_pass'] is True
     with SessionLocal() as db:
         persisted=db.get(ExamRecord,rid)
-        assert persisted.total_score==13 and persisted.max_score==17 and persisted.is_pass
+        assert persisted.total_score==12 and persisted.max_score==17 and persisted.is_pass
         marked={a['question_id']:a for a in persisted.answers}
         assert marked[ids[3]]['graded'] and marked[ids[3]]['score']==0 and marked[ids[3]]['grader_comment']=='零分也已批改'
         assert db.scalar(select(func.count()).select_from(Notification).where(Notification.event_key==f'exam:{rid}'))==1
@@ -141,9 +141,9 @@ def main():
     call(s2,'POST',f'/api/v1/exams/{deadline_exam}/start',409)
     call(other,'GET',f'/api/v1/exams/{eid}/records',403)
     teacher_list=call(t,'GET',f'/api/v1/exams/{eid}/records').json()
-    assert teacher_list['meta']['total']==2 and any(r['id']==rid and r['total_score']==13 for r in teacher_list['items'])
+    assert teacher_list['meta']['total']==2 and any(r['id']==rid and r['total_score']==12 for r in teacher_list['items'])
     roster=call(t,'GET',f'/api/v1/learning/courses/{cid}/students').json()
-    assert any(any(r['total_score']==13 for r in row['exam_results']) for row in roster['items'])
+    assert any(any(r['total_score']==12 for r in row['exam_results']) for row in roster['items'])
     checks.append('次数限制、截止后仅结算此前已保存答案、成绩列表与教师学生表一致')
 
     # A second unstarted student attempt is available for the browser test.

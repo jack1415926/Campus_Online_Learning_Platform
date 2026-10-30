@@ -13,7 +13,7 @@ class ChapterBase(BaseModel):
     content_type: ContentType = ContentType.video
     content_ref_id: str | None = None
     text_content: str | None = None
-    sort_order: int = 0
+    sort_order: int = Field(default=0, ge=0, le=1000000)
     is_required: bool = True
     estimated_minutes: int = 0
     unlock_condition: dict | None = None
@@ -28,7 +28,7 @@ class ChapterUpdate(BaseModel):
     content_type: ContentType | None = None
     content_ref_id: str | None = None
     text_content: str | None = None
-    sort_order: int | None = None
+    sort_order: int = Field(default=0, ge=0, le=1000000)
     is_required: bool | None = None
     estimated_minutes: int | None = None
     unlock_condition: dict | None = None

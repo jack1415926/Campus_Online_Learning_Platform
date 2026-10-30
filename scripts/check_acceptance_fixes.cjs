@@ -15,7 +15,7 @@ function load(token = '') {
     console, URLSearchParams, setTimeout, clearTimeout, setInterval, clearInterval,
     localStorage: {getItem: key => storage.get(key), setItem: (k,v) => storage.set(k,v), removeItem: k => storage.delete(k)},
     window: {innerWidth: 1200, location: {hash: '#dashboard'}, addEventListener() {}},
-    ElementPlus: {ElMessage: {error: m => messages.push(m), warning: m => messages.push(m)}, ElMessageBox: {}},
+    ElementPlus: {ElMessage: {error: m => messages.push(m), warning: m => messages.push(m), success: m => messages.push(m)}, ElMessageBox: {}},
     HomeworkPanel: {}, CampusExamPanel: {}, CommunicationPanel: {}, CertificatePanel: {}, PlatformSettingsPage: {},
     fetch: async () => ({status: 200, ok: true, text: async () => '{}'}),
   });
@@ -68,6 +68,30 @@ test('ISSUE-03: first failed identity load invalidates the cached component imme
   assert.equal(env.run('page.currentComponent.value===DashboardPage'), true);
   env.run('api.clearToken()');
   assert.equal(env.run('page.currentComponent.value===LoginPage'), true);
+});
+
+test('CM-02: editing refresh uses its content type; chapter order is loaded and saved', async () => {
+  const env = load();
+  env.run("var queries=[],saved=[];api.listMedia=async q=>{queries.push(q.media_type);return {items:[]}};api.updateChapter=async(c,id,body)=>saved.push({...body});api.addChapter=async(c,body)=>saved.push({...body});api.getCourse=async()=>page.course.value; var page=CourseDetailPage.setup({id:'course'});page.course.value={can_manage:true,chapters:[{sort_order:10},{sort_order:30}]};page.openEditCh({id:'chapter',title:'课件',content_type:'document',sort_order:30,estimated_minutes:1,is_required:true});");
+  await env.run('Vue.nextTick()');
+  assert.equal(env.run('page.editChForm.sort_order'), 30);
+  const template = env.run('CourseDetailPage.template');
+  const dialog = template.slice(template.indexOf('v-model="showEditCh"'), template.indexOf('v-model="showExamConfig"'));
+  const handler = dialog.match(/@click="([^"]*loadMedia[^\"]*)"/)[1];
+  env.context.page = env.run('page');
+  env.context.event = {type:'click'};
+  await env.run(`(async()=>{with(page){const $event=event;${handler==='loadMedia'?'await loadMedia($event)':`await (${handler})`};}})()`);
+  assert.equal(env.run('queries.at(-1)'), 'document');
+  assert.match(dialog, /v-model="editChForm.sort_order"/);
+  assert.match(template, /v-model="chForm.sort_order"/);
+  env.run('page.editChForm.sort_order=5');
+  await env.run('page.doEditCh()');
+  assert.equal(env.run('saved[0].sort_order'), 5);
+  env.run('page.openAddCh()');
+  assert.equal(env.run('page.chForm.sort_order'), 31);
+  env.run("page.chForm.title='新章节';page.chForm.content_type='text';page.chForm.sort_order=15");
+  await env.run('page.doAddCh()');
+  assert.equal(env.run('saved[1].sort_order'), 15);
 });
 
 test('ISSUE-04: validation arrays give Chinese field messages and preserve business errors', async () => {
