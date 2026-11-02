@@ -1,0 +1,51 @@
+{
+  "isolated_migration": {
+    "status": "PASS",
+    "database": "campus_restore_prune_final_1102",
+    "permissions_after": 19,
+    "checks": [
+      "only organization permissions and their bindings removed",
+      "user-role assignments unchanged",
+      "upgrade/downgrade/upgrade",
+      "two reseeds do not recreate org permissions"
+    ]
+  },
+  "live_restart": {
+    "status": "PASS",
+    "permissions": 19,
+    "role_permission_counts": [
+      [
+        "admin",
+        19
+      ],
+      [
+        "student",
+        3
+      ],
+      [
+        "teacher",
+        8
+      ]
+    ],
+    "migration": "a0b1c2d3e4f5",
+    "after_restart_org_permissions": 0,
+    "requests": 10,
+    "checks": [
+      {
+        "role": "admin",
+        "identity_status": 200,
+        "user_list_status": 200
+      },
+      {
+        "role": "teacher",
+        "identity_status": 200,
+        "user_list_status": 403
+      },
+      {
+        "role": "student",
+        "identity_status": 200,
+        "user_list_status": 403
+      }
+    ]
+  }
+}

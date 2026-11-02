@@ -1,0 +1,72 @@
+{
+  "date": "2026-11-02",
+  "scope": "targeted migration and API regression; no full browser acceptance rerun",
+  "migration": {
+    "migration-check.json": {
+      "status": "PASS",
+      "database": "campus_restore_prune_20261102",
+      "tables_before": 36,
+      "tables_after": 28,
+      "retained_tables_checked": 27,
+      "checks": [
+        "nonempty legacy table rejected before DDL",
+        "nonempty removed field rejected before DDL",
+        "non-user assignment rejected before DDL",
+        "upgrade/downgrade/upgrade",
+        "retained data row counts and fingerprints unchanged"
+      ]
+    },
+    "fresh-migration.json": {
+      "status": "PASS",
+      "database": "campus_restore_prune_fresh_1102",
+      "tables": 28,
+      "migration": "f9a0b1c2d3e4"
+    },
+    "live-data-preservation": {
+      "status": "PASS",
+      "retained_tables": 27
+    },
+    "retired-routes": {
+      "status": "PASS",
+      "requests": 36,
+      "retired_routes_absent_from_openapi": true
+    }
+  },
+  "successful_regressions": {
+    "stage3-results": {
+      "http_requests": 113
+    },
+    "stage4-results": {
+      "http_requests": 80
+    },
+    "stage5-results": {
+      "http_requests": 76
+    },
+    "stage5-edge-results": {
+      "http_requests": 18
+    },
+    "stage6-results": {
+      "http_requests": 73
+    },
+    "stage7-results": {
+      "http_requests": 77
+    },
+    "stage7-maintenance-results": {
+      "http_requests": 19
+    },
+    "blank-short-answers-results": {
+      "http_requests": 30
+    },
+    "chapter-order-results": {
+      "http_requests": 15
+    }
+  },
+  "successful_regression_requests": 501,
+  "component_tests": 6,
+  "bootstrap_tests": 5,
+  "post_migration_restore": {
+    "tables": 28,
+    "files": 15,
+    "status": "PASS"
+  }
+}
