@@ -1,6 +1,5 @@
 """User management API endpoints (UM-03, UM-04, UM-05)."""
 
-import uuid
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -10,14 +9,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.core.permissions import Perm, RoleCode
+from app.core.permissions import Perm
 from app.core.rbac import require_permission
 from app.database import get_db
-from app.models.org import Organization
 from app.models.role import DataScope
 from app.models.role import UserRole
 from app.models.session import Session as LoginSession, SessionStatus
-from app.core.campus_access import roles_for
 from app.core.security import hash_password, verify_password
 from app.core.seed import assign_role
 from app.schemas.auth import ChangePasswordRequest
@@ -75,26 +72,12 @@ def _load_user_roles(db: Session, user_ids: list) -> dict:
     return result
 
 
-def _load_department_names(db: Session, department_ids: list) -> dict:
-    """Batch load organization names by their IDs."""
-    ids = [d for d in department_ids if d]
-    if not ids:
-        return {}
-    stmt = select(Organization.id, Organization.name).where(Organization.id.in_(ids))
-    return {str(oid): name for oid, name in db.execute(stmt).all()}
-
-
 def _user_response_with_roles(db: Session, user: User) -> UserResponse:
     """Build UserResponse with roles populated."""
     resp = UserResponse.model_validate(user)
     roles_map = _load_user_roles(db, [str(user.id)])
     resp.roles = roles_map.get(str(user.id), [])
-    if user.department_id:
-        dept_names = _load_department_names(db, [user.department_id])
-        resp.department_name = dept_names.get(str(user.department_id))
     return resp
-
-
 
 
 # --- Personal Center (UM-05) ---
@@ -140,9 +123,6 @@ def change_password(body: ChangePasswordRequest, current_user: User = Depends(ge
 
 @router.get("", response_model=PageResponse[UserResponse])
 def list_users(
-    department_id: uuid.UUID | None = Query(None),
-    job_level: str | None = Query(None),
-    position: str | None = Query(None),
     user_status: str | None = Query(None, alias="status"),
     keyword: str | None = Query(None),
     review_status: Literal["pending", "approved", "rejected"] | None = Query(None),
@@ -153,20 +133,15 @@ def list_users(
 ):
     """List users with optional grouping filters (UM-04 user grouping)."""
     filt = UserGroupFilter(
-        department_id=department_id,
-        job_level=job_level,
-        position=position,
         status=user_status,
         keyword=keyword,
     )
     users, total = UserService.list_users(db, requester, filt, page, page_size, review_status=review_status)
     roles_map = _load_user_roles(db, [str(u.id) for u in users])
-    dept_names = _load_department_names(db, [str(u.department_id) for u in users if u.department_id])
     items = []
     for u in users:
         resp = UserResponse.model_validate(u)
         resp.roles = roles_map.get(str(u.id), [])
-        resp.department_name = dept_names.get(str(u.department_id)) if u.department_id else None
         items.append(resp)
     return PageResponse(
         items=items,

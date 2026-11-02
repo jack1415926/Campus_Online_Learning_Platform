@@ -1,29 +1,16 @@
 """Notification API (NTF-01 through NTF-04)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.core.permissions import Perm
-from app.core.rbac import load_user_permissions
 from app.database import get_db
-from app.models.notification import NotificationTemplate
 from app.models.user import User
 from app.schemas.common import PageMeta, PageResponse
-from app.schemas.notification import (
-    MarkReadRequest, NotificationResponse, NotificationTemplateCreate,
-    NotificationTemplateResponse, SendNotificationRequest,
-)
-from app.services.notification_service import NotificationService, TemplateService
+from app.schemas.notification import MarkReadRequest, NotificationResponse
+from app.services.notification_service import NotificationService
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
-
-
-def _check_perm(db: Session, user: User, *perms: str):
-    user_perms = load_user_permissions(db, user.id)
-    if not any(p in user_perms for p in perms):
-        raise HTTPException(403, f"Requires: {', '.join(perms)}")
 
 
 # --- User notifications (NTF-01) ---
@@ -53,45 +40,3 @@ def mark_all_read(requester: User = Depends(get_current_user), db: Session = Dep
     count = NotificationService.mark_all_read(db, requester.id)
     db.commit()
     return {"marked": count}
-
-
-# --- Send notification (NTF-04 event trigger) ---
-
-@router.post("/send", response_model=NotificationResponse, status_code=201)
-def send_notification(body: SendNotificationRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _check_perm(db, requester, Perm.LEARNING_ASSIGN)
-    try:
-        notif = NotificationService.send(db, body)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    db.commit()
-    return notif
-
-
-# --- Templates (NTF-03) ---
-
-@router.get("/templates", response_model=list[NotificationTemplateResponse])
-def list_templates(requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return TemplateService.list_templates(db)
-
-
-@router.post("/templates", response_model=NotificationTemplateResponse, status_code=201)
-def create_template(body: NotificationTemplateCreate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _check_perm(db, requester, Perm.LEARNING_MANAGE)
-    tmpl = TemplateService.create_template(
-        db, body.code, body.name, body.notification_type,
-        body.title_template, body.body_template, body.channels, body.trigger_mode,
-    )
-    tmpl.is_active = body.is_active
-    db.commit()
-    return tmpl
-
-
-@router.delete("/templates/{tmpl_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_template(tmpl_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _check_perm(db, requester, Perm.LEARNING_MANAGE)
-    tmpl = db.execute(select(NotificationTemplate).where(NotificationTemplate.id == tmpl_id)).scalar_one_or_none()
-    if not tmpl:
-        raise HTTPException(404, "Template not found")
-    TemplateService.delete_template(db, tmpl)
-    db.commit()

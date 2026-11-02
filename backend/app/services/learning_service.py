@@ -2,152 +2,17 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, func, insert, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from app.models.course import Chapter, Course, CourseStatus
 from app.models.exam import Exam, ExamRecord
-from app.models.learning import (
-    AssignmentType, CompletionStatus, CourseAssignment, LearningPath,
-    LearningRecord, TrainingPlan, plan_courses, path_courses,
-)
+from app.models.learning import AssignmentType, CompletionStatus, CourseAssignment, LearningRecord
 from app.models.notification import Notification, NotificationType
 from app.models.role import Role, UserRole
 from app.models.user import User
-from app.schemas.learning import (
-    CourseAssignmentCreate, LearningPathCreate, LearningPathUpdate,
-    ProgressUpdateRequest, TrainingPlanCreate, TrainingPlanUpdate,
-)
+from app.schemas.learning import ProgressUpdateRequest
 from app.services.notification_service import NotificationService
-
-
-def _get_plan_course_ids(db: Session, plan_id: str):
-    rows = db.execute(select(plan_courses.c.course_id).where(plan_courses.c.plan_id == plan_id)).all()
-    return [r[0] for r in rows]
-
-
-def _set_plan_courses(db: Session, plan_id: str, course_ids: list[str]):
-    db.execute(delete(plan_courses).where(plan_courses.c.plan_id == plan_id))
-    db.flush()
-    for cid in course_ids:
-        db.execute(insert(plan_courses).values(plan_id=plan_id, course_id=cid))
-    db.flush()
-
-
-def _get_path_course_ids(db: Session, path_id: str):
-    rows = db.execute(select(path_courses.c.course_id).where(path_courses.c.path_id == path_id)).all()
-    return [r[0] for r in rows]
-
-
-def _set_path_courses(db: Session, path_id: str, course_ids: list[str]):
-    db.execute(delete(path_courses).where(path_courses.c.path_id == path_id))
-    db.flush()
-    for cid in course_ids:
-        db.execute(insert(path_courses).values(path_id=path_id, course_id=cid))
-    db.flush()
-
-
-class TrainingPlanService:
-
-    @staticmethod
-    def list_plans(db: Session, page: int = 1, page_size: int = 20):
-        stmt = select(TrainingPlan)
-        total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar() or 0
-        stmt = stmt.offset((page - 1) * page_size).limit(page_size).order_by(TrainingPlan.created_at.desc())
-        plans = list(db.execute(stmt).scalars().all())
-        for p in plans:
-            p._course_ids = _get_plan_course_ids(db, p.id)
-        return plans, total
-
-    @staticmethod
-    def get_plan(db: Session, plan_id: str):
-        plan = db.execute(select(TrainingPlan).where(TrainingPlan.id == plan_id)).scalar_one_or_none()
-        if plan:
-            plan._course_ids = _get_plan_course_ids(db, plan.id)
-        return plan
-
-    @staticmethod
-    def create_plan(db: Session, body: TrainingPlanCreate, creator_id: str):
-        plan = TrainingPlan(
-            name=body.name, description=body.description,
-            target_audience=body.target_audience, start_date=body.start_date,
-            end_date=body.end_date, completion_requirement=body.completion_requirement,
-            created_by=creator_id,
-        )
-        db.add(plan)
-        db.flush()
-        if body.course_ids:
-            _set_plan_courses(db, plan.id, body.course_ids)
-        plan._course_ids = body.course_ids
-        return plan
-
-    @staticmethod
-    def update_plan(db: Session, plan: TrainingPlan, body: TrainingPlanUpdate):
-        data = body.model_dump(exclude_unset=True, exclude={"course_ids"})
-        for k, v in data.items():
-            setattr(plan, k, v)
-        db.flush()
-        if body.course_ids is not None:
-            _set_plan_courses(db, plan.id, body.course_ids)
-            plan._course_ids = body.course_ids
-        return plan
-
-    @staticmethod
-    def delete_plan(db: Session, plan: TrainingPlan):
-        db.execute(delete(plan_courses).where(plan_courses.c.plan_id == plan.id))
-        db.delete(plan)
-        db.flush()
-
-
-class LearningPathService:
-
-    @staticmethod
-    def list_paths(db: Session, page: int = 1, page_size: int = 20):
-        stmt = select(LearningPath)
-        total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar() or 0
-        stmt = stmt.offset((page - 1) * page_size).limit(page_size).order_by(LearningPath.created_at.desc())
-        paths = list(db.execute(stmt).scalars().all())
-        for p in paths:
-            p._course_ids = _get_path_course_ids(db, p.id)
-        return paths, total
-
-    @staticmethod
-    def get_path(db: Session, path_id: str):
-        path = db.execute(select(LearningPath).where(LearningPath.id == path_id)).scalar_one_or_none()
-        if path:
-            path._course_ids = _get_path_course_ids(db, path.id)
-        return path
-
-    @staticmethod
-    def create_path(db: Session, body: LearningPathCreate, creator_id: str):
-        path = LearningPath(
-            name=body.name, description=body.description,
-            target_job_level=body.target_job_level, target_position=body.target_position,
-            deadline_days=body.deadline_days, created_by=creator_id,
-        )
-        db.add(path)
-        db.flush()
-        if body.course_ids:
-            _set_path_courses(db, path.id, body.course_ids)
-        path._course_ids = body.course_ids
-        return path
-
-    @staticmethod
-    def update_path(db: Session, path: LearningPath, body: LearningPathUpdate):
-        data = body.model_dump(exclude_unset=True, exclude={"course_ids"})
-        for k, v in data.items():
-            setattr(path, k, v)
-        db.flush()
-        if body.course_ids is not None:
-            _set_path_courses(db, path.id, body.course_ids)
-            path._course_ids = body.course_ids
-        return path
-
-    @staticmethod
-    def delete_path(db: Session, path: LearningPath):
-        db.execute(delete(path_courses).where(path_courses.c.path_id == path.id))
-        db.delete(path)
-        db.flush()
 
 
 class AssignmentService:
@@ -155,65 +20,9 @@ class AssignmentService:
     @staticmethod
     def resolve_target_users(db: Session, assignment: CourseAssignment) -> list[User]:
         """Resolve the concrete users who receive an assignment."""
-        from sqlalchemy import or_
-        stmt = select(User)
-        atype = assignment.assignment_type
-        if atype == AssignmentType.user:
-            stmt = stmt.where(User.id == assignment.target_id)
-        elif atype == AssignmentType.department:
-            stmt = stmt.where(User.department_id == assignment.target_id)
-        elif atype == AssignmentType.user_group:
-            # Groups are not modeled; fall back to no direct members for now.
+        if assignment.assignment_type != AssignmentType.user:
             return []
-        elif atype == AssignmentType.job_level:
-            stmt = stmt.where(User.job_level == assignment.target_id)
-        elif atype == AssignmentType.position:
-            stmt = stmt.where(User.position == assignment.target_id)
-        else:
-            return []
-        return list(db.execute(stmt).scalars().all())
-
-    @staticmethod
-    def create_assignment(db: Session, body: CourseAssignmentCreate, assigner_id: str):
-        assignment = CourseAssignment(
-            course_id=body.course_id, assignment_type=body.assignment_type,
-            target_id=body.target_id, deadline=body.deadline,
-            is_required=body.is_required, training_plan_id=body.training_plan_id,
-            assigned_by=assigner_id,
-        )
-        db.add(assignment)
-        db.flush()
-
-        # Notify the users who receive this assignment (LM-03).
-        targets = AssignmentService.resolve_target_users(db, assignment)
-        if targets:
-            course = db.execute(
-                select(Course).where(Course.id == assignment.course_id)
-            ).scalar_one_or_none()
-            course_title = course.title if course else assignment.course_id
-            assigner = db.execute(
-                select(User).where(User.id == assigner_id)
-            ).scalar_one_or_none()
-            assigner_name = assigner.full_name if assigner else "管理员"
-            deadline_txt = f"\n完成期限: {assignment.deadline}" if assignment.deadline else ""
-            required_txt = "必修" if assignment.is_required else "选修"
-            NotificationService.notify_users(
-                db, [u.id for u in targets], NotificationType.assignment,
-                "课程已分配",
-                f"{assigner_name} 为您分配了课程《{course_title}》({required_txt})。"
-                f"请前往\"我的课程\"开始学习。{deadline_txt}",
-                extra_data={"course_id": assignment.course_id, "assignment_id": assignment.id},
-            )
-        return assignment
-
-    @staticmethod
-    def list_assignments(db: Session, course_id=None, page=1, page_size=20):
-        stmt = select(CourseAssignment)
-        if course_id:
-            stmt = stmt.where(CourseAssignment.course_id == course_id)
-        total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar() or 0
-        stmt = stmt.offset((page - 1) * page_size).limit(page_size).order_by(CourseAssignment.created_at.desc())
-        return list(db.execute(stmt).scalars().all()), total
+        return list(db.scalars(select(User).where(User.id == assignment.target_id)))
 
     @staticmethod
     def get_user_assignments(db: Session, user: User):

@@ -1,16 +1,14 @@
 """User management service: CRUD, grouping, and profile operations."""
 
-import uuid
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import selectinload
 
-from app.core.rbac import get_data_scope_filter, load_user_data_scope
+from app.core.rbac import get_data_scope_filter
 from app.core.security import hash_password
 from app.core.seed import assign_role
-from app.models.org import Organization
-from app.models.role import DataScope, UserRole
+from app.models.role import DataScope
 from app.models.user import User, UserStatus
 from app.schemas.user import UserCreateRequest, UserGroupFilter, UserUpdateRequest
 
@@ -37,17 +35,8 @@ class UserService:
         # Apply data scope
         if "user_id" in scope_filter:
             stmt = stmt.where(User.id == scope_filter["user_id"])
-        elif "department_ids" in scope_filter:
-            stmt = stmt.where(User.department_id.in_(scope_filter["department_ids"]))
-
         # Apply user-provided filters (UM-04 user grouping)
         if filt:
-            if filt.department_id:
-                stmt = stmt.where(User.department_id == filt.department_id)
-            if filt.job_level:
-                stmt = stmt.where(User.job_level == filt.job_level)
-            if filt.position:
-                stmt = stmt.where(User.position == filt.position)
             if filt.status:
                 stmt = stmt.where(User.status == UserStatus(filt.status))
             if filt.keyword:
@@ -96,18 +85,6 @@ class UserService:
         if existing.scalars().first():
             raise ValueError("Username or email already exists")
 
-        # Resolve department: use provided department_id, or find/create by name
-        department_id = body.department_id
-        if not department_id and body.department_name:
-            dept = db.execute(
-                select(Organization).where(Organization.name == body.department_name)
-            ).scalar_one_or_none()
-            if not dept:
-                dept = Organization(name=body.department_name, status="active")
-                db.add(dept)
-                db.flush()
-            department_id = str(dept.id)
-
         user = User(
             username=body.username,
             email=body.email,
@@ -115,9 +92,6 @@ class UserService:
             full_name=body.full_name,
             employee_id=body.employee_id,
             phone=body.phone,
-            department_id=department_id,
-            job_level=body.job_level,
-            position=body.position,
             custom_fields=body.custom_fields,
             status=UserStatus.active,
         )

@@ -18,10 +18,6 @@ class UserResponse(BaseModel):
     employee_id: str | None = None
     phone: str | None = None
     avatar_url: str | None = None
-    department_id: uuid.UUID | None = None
-    department_name: str | None = None
-    job_level: str | None = None
-    position: str | None = None
     hire_date: datetime | None = None
     status: str
     custom_fields: dict | None = None
@@ -42,8 +38,6 @@ class UserUpdateRequest(BaseModel):
     full_name: str | None = Field(None, max_length=100)
     email: EmailStr | None = None
     phone: str | None = None
-    job_level: str | None = Field(None, max_length=50)
-    position: str | None = Field(None, max_length=100)
     avatar_url: str | None = Field(None, max_length=500)
     custom_fields: dict | None = None
 
@@ -57,10 +51,6 @@ class UserCreateRequest(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=100)
     employee_id: str | None = Field(None, max_length=50)
     phone: str | None = None
-    department_id: uuid.UUID | None = None
-    department_name: str | None = Field(None, max_length=200)
-    job_level: str | None = None
-    position: str | None = None
     custom_fields: dict | None = None
     role_code: Literal["student", "teacher", "admin"] = "student"
     _password_limit = field_validator("password")(validate_password)
@@ -70,8 +60,5 @@ class UserCreateRequest(BaseModel):
 class UserGroupFilter(BaseModel):
     """Filter criteria for user grouping (UM-04)."""
 
-    department_id: uuid.UUID | None = None
-    job_level: str | None = None
-    position: str | None = None
     status: str | None = None
     keyword: str | None = None  # search name/username/employee_id

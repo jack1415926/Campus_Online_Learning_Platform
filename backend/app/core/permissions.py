@@ -14,10 +14,6 @@ class Perm:
     USER_UPDATE = "user:update"
     USER_DELETE = "user:delete"
 
-    # Organization
-    ORG_READ = "org:read"
-    ORG_MANAGE = "org:manage"
-
     # Course management
     COURSE_READ = "course:read"
     COURSE_CREATE = "course:create"
@@ -45,15 +41,11 @@ class Perm:
 
 
 class RoleCode:
-    """Builtin role codes."""
+    """Campus builtin role codes."""
 
-    LEARNER = "learner"
-    MANAGER = "manager"
-    ADMIN = "admin"
-    AUTHOR = "author"
-    SYSADMIN = "sysadmin"
     STUDENT = "student"
     TEACHER = "teacher"
+    ADMIN = "admin"
 
 
 # Campus exam permissions are enforced together with course ownership/membership.

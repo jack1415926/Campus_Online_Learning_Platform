@@ -5,8 +5,6 @@ from app.models.platform import PlatformSettings
 from app.models.certificate import Certificate
 from app.models.communication import DiscussionTopic, DiscussionReply, PrivateMessage
 from app.models.homework import Homework, HomeworkSubmission
-from app.models.org import Organization
-from app.models.dictionary import JobLevel, Position
 from app.models.user import User, UserStatus
 from app.models.session import Session, SessionStatus
 from app.models.role import (
@@ -19,28 +17,27 @@ from app.models.course import (
 )
 from app.models.learning import (
     AssignmentType, CompletionStatus, CourseAssignment,
-    LearningPath, LearningRecord, TrainingPlan,
-    path_courses, plan_courses,
+    LearningRecord,
 )
 
 __all__ = [
-    "Base", "Organization", "JobLevel", "Position", "User", "UserStatus",
+    "Base", "User", "UserStatus",
     "DataScope", "Permission", "Role", "UserRole", "role_permissions",
     "Session", "SessionStatus",
     "Category", "Tag", "MediaAsset", "MediaType",
     "Chapter", "ContentType", "Course", "CourseStatus", "Difficulty", "course_tags",
     "AssignmentType", "CompletionStatus", "CourseAssignment",
-    "LearningPath", "LearningRecord", "TrainingPlan",
-    "path_courses", "plan_courses",
+    "LearningRecord",
+
     "Notification", "NotificationChannel", "NotificationStatus",
     "Exam", "ExamRecord", "ExamStatus", "Question", "QuestionType",
     "QuestionBank",
     "MediaCategory",
-    "NotificationTemplate", "NotificationType", "TriggerMode",
+    "NotificationType",
 ]
 from app.models.notification import (
     Notification, NotificationChannel, NotificationStatus,
-    NotificationTemplate, NotificationType, TriggerMode,
+    NotificationType,
 )
 
 from app.models.exam import (

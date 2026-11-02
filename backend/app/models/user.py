@@ -3,7 +3,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, JSON, String, Text
+from sqlalchemy import CHAR, DateTime, Enum, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKey
@@ -36,14 +36,6 @@ class User(Base, UUIDPrimaryKey, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    department_id: Mapped[str | None] = mapped_column(
-        CHAR(36),
-        ForeignKey("organizations.id"),
-        nullable=True,
-        index=True,
-    )
-    job_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    position: Mapped[str | None] = mapped_column(String(100), nullable=True)
     hire_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     status: Mapped[UserStatus] = mapped_column(
@@ -56,9 +48,6 @@ class User(Base, UUIDPrimaryKey, TimestampMixin):
     sso_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
     sso_subject: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
-    department: Mapped["Organization | None"] = relationship(
-        "Organization", back_populates="users"
-    )
     role_assignments: Mapped[list["UserRole"]] = relationship(
         "UserRole", back_populates="user", cascade="all, delete-orphan"
     )

@@ -84,11 +84,11 @@ def main():
     call(t, "POST", root+f"/homeworks/{homework}/submissions/{submission}/grade", json={"score": 0, "feedback": "已批改即可，不设及格线"})
     claim_denied("最终及格")
     rid = call(s, "POST", f"/api/v1/exams/{eid}/start")["record_id"]
-    call(s, "POST", f"/api/v1/exams/records/{rid}/submit", json={"answers": []})
+    call(s, "POST", f"/api/v1/exams/records/{rid}/submit", json={"answers": [{"question_id": q, "answer": "参考要点作答"} for q in qids]})
     call(t, "POST", f"/api/v1/exams/records/{rid}/grade", json={"answers": [{"question_id": q, "score": 0} for q in qids]})
     claim_denied("最终及格")
     rid = call(s, "POST", f"/api/v1/exams/{eid}/start")["record_id"]
-    call(s, "POST", f"/api/v1/exams/records/{rid}/submit", json={"answers": []})
+    call(s, "POST", f"/api/v1/exams/records/{rid}/submit", json={"answers": [{"question_id": q, "answer": "参考要点作答"} for q in qids]})
     call(t, "POST", f"/api/v1/exams/records/{rid}/grade", json={"answers": [{"question_id": qids[0], "score": 5}]})
     claim_denied("最终及格")
     grade = {"answers": [{"question_id": qids[1], "score": 0}]}
@@ -135,7 +135,7 @@ def main():
     call(s, "POST", cross_root+"/join")
     call(s, "POST", "/api/v1/learning/progress", json={"course_id": cross["id"], "chapter_id": cross["chapters"][0]["id"], "progress_percent": 100})
     cross_rid = call(s, "POST", f"/api/v1/exams/{cross_exam}/start")["record_id"]
-    call(s, "POST", f"/api/v1/exams/records/{cross_rid}/submit", json={"answers": []})
+    call(s, "POST", f"/api/v1/exams/records/{cross_rid}/submit", json={"answers": [{"question_id": q, "answer": "参考要点作答"} for q in qids]})
     call(t, "POST", f"/api/v1/exams/records/{cross_rid}/grade", json={"answers": [{"question_id": q, "score": 5} for q in qids]})
     assert call(s, "GET", cross_root+"/certificate")["eligible"]
     call(s, "POST", cross_root+"/certificate")

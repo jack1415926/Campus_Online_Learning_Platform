@@ -8,77 +8,6 @@ import math
 from app.models.learning import AssignmentType, CompletionStatus
 
 
-class TrainingPlanBase(BaseModel):
-    name: str = Field(..., max_length=255)
-    description: str | None = None
-    target_audience: dict | None = None
-    start_date: str | None = None
-    end_date: str | None = None
-    completion_requirement: dict | None = None
-
-
-class TrainingPlanCreate(TrainingPlanBase):
-    course_ids: list[str] = []
-
-
-class TrainingPlanUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    target_audience: dict | None = None
-    start_date: str | None = None
-    end_date: str | None = None
-    completion_requirement: dict | None = None
-    course_ids: list[str] | None = None
-
-
-class TrainingPlanResponse(TrainingPlanBase):
-    id: str
-    status: str
-    created_by: str | None = None
-    created_at: datetime
-    course_ids: list[str] = []
-    model_config = {"from_attributes": True}
-
-
-class LearningPathBase(BaseModel):
-    name: str = Field(..., max_length=255)
-    description: str | None = None
-    target_job_level: str | None = None
-    target_position: str | None = None
-    deadline_days: int | None = None
-
-
-class LearningPathCreate(LearningPathBase):
-    course_ids: list[str] = []
-
-
-class LearningPathUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    target_job_level: str | None = None
-    target_position: str | None = None
-    deadline_days: int | None = None
-    course_ids: list[str] | None = None
-
-
-class LearningPathResponse(LearningPathBase):
-    id: str
-    status: str
-    created_by: str | None = None
-    created_at: datetime
-    course_ids: list[str] = []
-    model_config = {"from_attributes": True}
-
-
-class CourseAssignmentCreate(BaseModel):
-    course_id: str
-    assignment_type: AssignmentType
-    target_id: str
-    deadline: str | None = None
-    is_required: bool = True
-    training_plan_id: str | None = None
-
-
 class CourseAssignmentResponse(BaseModel):
     course_title: str | None = None
     id: str
@@ -87,7 +16,6 @@ class CourseAssignmentResponse(BaseModel):
     target_id: str
     deadline: str | None = None
     is_required: bool
-    training_plan_id: str | None = None
     assigned_by: str | None = None
     created_at: datetime
     model_config = {"from_attributes": True}

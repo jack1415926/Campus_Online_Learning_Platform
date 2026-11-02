@@ -8,7 +8,7 @@ from sqlalchemy import engine_from_config, pool
 from app.config import settings
 from app.models import Base  # noqa: F401
 from app.models import (  # noqa: F401
-    Organization, User, Role, Permission, UserRole, role_permissions,
+    User, Role, Permission, UserRole, role_permissions,
     Category, Tag, MediaAsset, MediaType, Course, Chapter,
     CourseStatus, ContentType, Difficulty, course_tags,
 )

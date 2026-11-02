@@ -1,4 +1,4 @@
-"""Notification and template models (NTF-01 through NTF-04)."""
+"""Fixed business-event notifications."""
 
 import enum
 
@@ -26,31 +26,6 @@ class NotificationStatus(str, enum.Enum):
     pending = "pending"
     sent = "sent"
     failed = "failed"
-
-
-class TriggerMode(str, enum.Enum):
-    event = "event"
-    scheduled = "scheduled"
-
-
-class NotificationTemplate(Base, UUIDPrimaryKey, TimestampMixin):
-    """Configurable notification template with variable substitution (NTF-03)."""
-
-    __tablename__ = "notification_templates"
-
-    code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-    notification_type: Mapped[NotificationType] = mapped_column(
-        Enum(NotificationType, name="notification_type"), index=True
-    )
-    title_template: Mapped[str] = mapped_column(String(500), nullable=False)
-    body_template: Mapped[str] = mapped_column(Text, nullable=False)
-    channels: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    # e.g. {"in_app": true, "email": true, "wecom": false}
-    trigger_mode: Mapped[TriggerMode] = mapped_column(
-        Enum(TriggerMode, name="trigger_mode"), default=TriggerMode.event
-    )
-    is_active: Mapped[bool] = mapped_column(default=True)
 
 
 class Notification(Base, UUIDPrimaryKey, TimestampMixin):

@@ -146,14 +146,6 @@ const api = {
   updateChapter(courseId, chId, body) { return this.request("PUT", "/courses/" + courseId + "/chapters/" + chId, body); },
   deleteChapter(courseId, chId) { return this.request("DELETE", "/courses/" + courseId + "/chapters/" + chId); },
   // Learning
-  listPlans(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/learning/plans" + q); },
-  createPlan(body) { return this.request("POST", "/learning/plans", body); },
-  deletePlan(id) { return this.request("DELETE", "/learning/plans/" + id); },
-  listPaths(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/learning/paths" + q); },
-  createPath(body) { return this.request("POST", "/learning/paths", body); },
-  deletePath(id) { return this.request("DELETE", "/learning/paths/" + id); },
-  createAssignment(body) { return this.request("POST", "/learning/assignments", body); },
-  listAssignments(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/learning/assignments" + q); },
   getMyAssignments() { return this.request("GET", "/learning/my-assignments"); },
   updateProgress(body) { return this.request("POST", "/learning/progress", body); },
   getCourseProgress(courseId) { return this.request("GET", "/learning/progress/" + courseId); },
@@ -177,10 +169,6 @@ const api = {
   getUnreadCount() { return this.request("GET", "/notifications/unread-count"); },
   markRead(ids) { return this.request("PUT", "/notifications/read", { notification_ids: ids }); },
   markAllRead() { return this.request("PUT", "/notifications/read-all"); },
-  listTemplates() { return this.request("GET", "/notifications/templates"); },
-  createTemplate(body) { return this.request("POST", "/notifications/templates", body); },
-  deleteTemplate(id) { return this.request("DELETE", "/notifications/templates/" + id); },
-  sendNotification(body) { return this.request("POST", "/notifications/send", body); },
   // Exams
   listQuestions(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/exams/questions" + q); },
   createQuestion(body) { return this.request("POST", "/exams/questions", body); },
@@ -218,25 +206,5 @@ const api = {
   },
   gradeExam(recordId, body) { return this.request("POST", "/exams/records/" + recordId + "/grade", body); },
   getExamAnalysis(examId) { return this.request("GET", "/exams/" + examId + "/analysis"); },
-  // Reports
-  getPersonalReport() { return this.request("GET", "/reports/personal"); },
-  getComplianceReport() { return this.request("GET", "/reports/compliance"); },
-  getCourseReport(courseId) { return this.request("GET", "/reports/course/" + courseId); },
-  getDeptReport(deptId) { return this.request("GET", "/reports/department/" + deptId); },
-  getPlanReport(planId) { return this.request("GET", "/reports/plan/" + planId); },
-  // Job levels
-  listJobLevels() { return this.request("GET", "/job-levels"); },
-  createJobLevel(body) { return this.request("POST", "/job-levels", body); },
-  updateJobLevel(id, body) { return this.request("PUT", "/job-levels/" + id, body); },
-  deleteJobLevel(id) { return this.request("DELETE", "/job-levels/" + id); },
-  // Positions
-  listPositions() { return this.request("GET", "/positions"); },
-  createPosition(body) { return this.request("POST", "/positions", body); },
-  updatePosition(id, body) { return this.request("PUT", "/positions/" + id, body); },
-  deletePosition(id) { return this.request("DELETE", "/positions/" + id); },
-  // Departments
-  listDepartments() { return this.request("GET", "/departments"); },
-  createDepartment(body) { return this.request("POST", "/departments", body); },
-  updateDepartment(id, body) { return this.request("PUT", "/departments/" + id, body); },
-  deleteDepartment(id) { return this.request("DELETE", "/departments/" + id); },
+
 };

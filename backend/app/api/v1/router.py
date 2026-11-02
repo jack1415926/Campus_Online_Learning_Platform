@@ -24,12 +24,6 @@ from app.api.v1.homework import router as homework_router
 from app.api.v1.learning import router as learning_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.exams import router as exams_router
-from app.api.v1.reports import router as reports_router
-from app.api.v1.dictionary import (
-    job_level_router,
-    position_router,
-    department_router,
-)
 
 api_router = APIRouter()
 admin_only = [Depends(require_permission(Perm.SYSTEM_CONFIG))]
@@ -54,11 +48,6 @@ api_router.include_router(homework_router)
 api_router.include_router(learning_router)
 api_router.include_router(notifications_router)
 api_router.include_router(exams_router)
-# Remaining legacy modules stay admin-only until their campus scope is implemented.
-api_router.include_router(reports_router, dependencies=admin_only)
-api_router.include_router(job_level_router, dependencies=admin_only)
-api_router.include_router(position_router, dependencies=admin_only)
-api_router.include_router(department_router, dependencies=admin_only)
 
 
 @api_router.get("/health", tags=["system"])

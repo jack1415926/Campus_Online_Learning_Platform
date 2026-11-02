@@ -16,8 +16,6 @@ PERMISSION_NAMES = {
     Perm.USER_CREATE: ("Create users", "user"),
     Perm.USER_UPDATE: ("Update users", "user"),
     Perm.USER_DELETE: ("Delete users", "user"),
-    Perm.ORG_READ: ("View organizations", "org"),
-    Perm.ORG_MANAGE: ("Manage organizations", "org"),
     Perm.COURSE_READ: ("View courses", "course"),
     Perm.COURSE_CREATE: ("Create courses", "course"),
     Perm.COURSE_UPDATE: ("Update courses", "course"),
@@ -36,23 +34,16 @@ PERMISSION_NAMES = {
 }
 
 ROLE_NAMES = {
-    "learner": "\u666e\u901a\u5458\u5de5",
-    "manager": "\u90e8\u95e8\u7ba1\u7406\u8005",
-    "admin": "\u57f9\u8bad\u7ba1\u7406\u5458",
-    "author": "\u5185\u5bb9\u521b\u4f5c\u8005",
-    "sysadmin": "\u7cfb\u7edf\u7ba1\u7406\u5458",
+    "student": "学生",
+    "teacher": "教师",
+    "admin": "管理员",
 }
 
 ROLE_DESCRIPTIONS = {
-    "learner": "\u67e5\u770b\u8bfe\u7a0b\u3001\u5b66\u4e60\u3001\u8003\u8bd5\u3001\u4e2a\u4eba\u6863\u6848",
-    "manager": "\u7ba1\u7406\u672c\u90e8\u95e8\u5b66\u4e60\u8fdb\u5ea6\u3001\u5206\u914d\u8bfe\u7a0b\u3001\u5ba1\u6279\u7533\u8bf7",
-    "admin": "\u7ba1\u7406\u8bfe\u7a0b\u5e93\u3001\u5b66\u4e60\u8def\u5f84\u3001\u8003\u8bd5\u3001\u8bc1\u4e66\u3001\u5168\u516c\u53f8\u62a5\u8868",
-    "author": "\u521b\u5efa\u548c\u7f16\u8f91\u8bfe\u7a0b\u5185\u5bb9\u3001\u63d0\u4ea4\u5ba1\u6838",
-    "sysadmin": "\u7cfb\u7edf\u914d\u7f6e\u3001SSO\u3001\u65e5\u5fd7\u5ba1\u8ba1\u3001\u6743\u9650\u7ef4\u62a4",
+    "student": "浏览课程、加入学习和个人资料",
+    "teacher": "管理本人课程、提交审核",
+    "admin": "审核与平台管理",
 }
-
-ROLE_NAMES.update(student="学生", teacher="教师", admin="管理员")
-ROLE_DESCRIPTIONS.update(student="浏览课程、加入学习和个人资料", teacher="管理本人课程、提交审核", admin="审核与平台管理")
 
 
 def seed_rbac(db: Session) -> None:
@@ -96,7 +87,8 @@ def seed_rbac(db: Session) -> None:
             role.permissions = desired_perms
 
     db.flush()
-    # Translate legacy bindings once; old roles no longer grant campus access.
+    # Migration b1c2d3e4f5a6 deliberately keeps a legacy role that still binds users or grants
+    # permissions, so translate those bindings here instead of silently dropping their access.
     for old_code, new_code in {"learner": "student", "manager": "student", "author": "teacher", "sysadmin": "admin"}.items():
         old_role = existing_roles.get(old_code)
         if old_role is None:
