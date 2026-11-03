@@ -1,0 +1,48 @@
+@startuml
+top to bottom direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 14
+skinparam componentStyle rectangle
+skinparam ArrowColor #555555
+skinparam packageStyle rectangle
+skinparam component {
+ BackgroundColor white
+ BorderColor #333333
+}
+skinparam database {
+ BackgroundColor white
+ BorderColor #333333
+}
+actor "学生 / 教师 / 管理员" as User
+rectangle "浏览器" {
+ component "网页界面\nVue 3 + Element Plus" as Web
+}
+package "服务器端 FastAPI 应用" {
+ component "接口路由与参数校验" as API
+ component "身份认证与权限控制" as Auth
+ component "业务处理\n课程、学习、作业、考试、证书" as Business
+ component "数据库访问\nSQLAlchemy + PyMySQL" as ORM
+ component "文件访问控制" as FileAPI
+}
+database "MySQL 8.4\n业务数据" as DB
+folder "本地文件存储\n课程素材、作业附件" as Storage
+component "备份与恢复脚本" as Backup
+User --> Web : 页面操作
+Web --> API : HTTP 请求
+API --> Auth : 校验身份与操作权限
+Auth --> Business : 执行业务处理
+Business --> ORM : 查询与更新数据
+ORM --> DB
+API --> FileAPI : 上传与读取文件
+FileAPI --> Auth : 校验访问资格
+FileAPI --> Storage : 保存或读取文件
+FileAPI --> ORM : 保存文件元数据
+Backup --> DB : 导出与恢复数据
+Backup --> Storage : 备份与恢复文件
+note bottom of API
+网页静态资源与接口
+由同一应用提供
+end note
+@enduml

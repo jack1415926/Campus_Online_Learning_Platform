@@ -1,0 +1,58 @@
+@startuml
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 14
+skinparam ArrowColor #555555
+skinparam activity {
+ BackgroundColor white
+ BorderColor #333333
+ DiamondBackgroundColor white
+ DiamondBorderColor #333333
+ StartColor #333333
+ EndColor #333333
+}
+start
+:学生进入考试;
+:检查课程成员资格、考试时间和次数;
+if (是否允许考试？) then (是)
+ :创建或恢复未结束答卷;
+ :保存试题快照和原截止时间;
+ :学生作答并保存草稿;
+ :提交答卷或触发超时处理;
+ if (是否已提交？) then (是)
+  :返回已有结果;
+  stop
+ else (否)
+  if (是否超时？) then (是)
+   :使用此前保存的草稿答案;
+  else (否)
+   :使用本次提交的答案;
+  endif
+  :校验重复题目、卷外题目和答案格式;
+  if (答案是否合法？) then (是)
+   :按试题快照逐题处理;
+   :客观题自动评分;
+   :空白简答题记0分并标记已批;
+   :非空简答题标记为待批改;
+   :保存答案与当前得分;
+   while (是否存在未批改题目？) is (是)
+    :答卷保持待批改状态;
+    :教师批改简答题并保存;
+   endwhile (否)
+   :汇总最终总分;
+   :按固定满分和及格比例判断结果;
+   :保存最终成绩与及格状态;
+   :生成成绩通知;
+   :学生查看最终结果;
+   stop
+  else (否)
+   :返回答案校验错误;
+   stop
+  endif
+ endif
+else (否)
+ :提示不满足考试条件;
+ stop
+endif
+@enduml

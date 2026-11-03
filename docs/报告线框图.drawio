@@ -1,0 +1,198 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" type="device" version="24.7.17">
+  <diagram id="page-1" name="课程详情与学习">
+    <mxGraphModel dx="827" dy="1169" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="课程详情与学习页" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=23;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="25" width="757" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="校园在线学习平台" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=left;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="90" width="300" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="课程中心   消息中心   学生" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="335" y="90" width="457" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="示例内容用于说明布局与交互" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=14;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="35" y="1080" width="757" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="课程中心 / Python程序设计" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="45" y="155" width="737" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="Python程序设计&#10;教师：张老师   状态：已发布" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="205" width="737" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="章节目录" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="305" width="220" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="已完成 第一章 课程介绍&#10;&#10;当前章 第二章 基础语法&#10;&#10;未完成 第三章 函数与模块" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="353" width="220" height="276" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="第二章 基础语法" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="285" y="305" width="497" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="学习内容区域&#10;&#10;视频播放 / 文档阅读" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=21;fontColor=#111111;strokeColor=#444444;fillColor=#F8F8F8;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="285" y="353" width="497" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="播放 / 暂停    01:20 / 10:00    倍速" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=15;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="285" y="563" width="497" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="标记本章完成" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="619" width="212" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="学习进度：已完成 1 / 3 章&#10;重新进入时恢复已保存的播放位置" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="685" width="737" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="课程作业：基础练习一     状态：待提交" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="780" width="542" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="提交作业" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="607" y="780" width="175" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="课程考试：章节测验       状态：未参加" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="850" width="542" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="开始考试" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="607" y="850" width="175" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="课程讨论    |    联系教师    |    查看证书资格" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="930" width="737" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-2" name="作业提交">
+    <mxGraphModel dx="827" dy="1169" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="作业提交页" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=23;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="25" width="757" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="校园在线学习平台" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=left;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="90" width="300" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="课程中心   消息中心   学生" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="335" y="90" width="457" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="示例内容用于说明布局与交互" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=14;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="35" y="1080" width="757" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="Python程序设计 / 课程作业" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="45" y="155" width="737" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="基础练习一&#10;截止时间：2026-11-10 23:59    满分：100分&#10;作业要求：完成指定练习，提交文字说明或一个附件。" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="205" width="737" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="提交作业" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="355" width="627" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="作业文字" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="120" y="420" width="587" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="请输入解题思路与结果……&#10;&#10;&#10;" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="120" y="460" width="587" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="单个附件：PDF / DOCX / JPG / PNG，最多20MB" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=15;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="120" y="635" width="587" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="选择文件" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="120" y="685" width="145" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="尚未选择文件" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="285" y="685" width="422" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="文字和附件至少填写一项" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=15;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="120" y="745" width="587" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="取消" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="415" y="805" width="130" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="提交" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="565" y="805" width="142" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="提交状态与反馈&#10;未提交 → 待批改 → 已批改&#10;截止前且未批改时可修改；批改后显示得分与评语。" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="910" width="737" height="110" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-3" name="教师阅卷">
+    <mxGraphModel dx="827" dy="1169" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="教师阅卷页" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=23;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="25" width="757" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="校园在线学习平台" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=left;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="90" width="300" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="课程中心   消息中心   教师" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="335" y="90" width="457" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="示例内容用于说明布局与交互" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=14;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="35" y="1080" width="757" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="Python程序设计 / 课程考试 / 答卷详情" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="45" y="155" width="737" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="章节测验     学生：学生甲     第1次作答&#10;状态：待批改     当前得分：7 / 17" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="205" width="737" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="客观题评分结果" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="310" width="737" height="43" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="第1～3题：系统自动评分&#10;客观题合计：7分" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="353" width="737" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="第4题  简答题（满分5分）" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="440" width="737" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="题目：说明函数参数的作用。&#10;学生答案：用于向函数传入调用时所需的数据。&#10;参考答案：参数用于接收调用者传入的数据。" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="482" width="737" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="评分" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="65" y="602" width="70" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="0～5" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="145" y="602" width="130" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="评语" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="305" y="602" width="70" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="请输入评语" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="385" y="602" width="377" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="第5题  简答题（满分5分）" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="665" width="737" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="题目：说明异常处理的基本作用。&#10;学生答案：捕获运行异常并进行相应处理。&#10;参考答案：在发生异常时执行处理逻辑。" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="45" y="707" width="737" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="评分" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="65" y="827" width="70" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="0～5" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="145" y="827" width="130" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="评语" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="305" y="827" width="70" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="请输入评语" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="385" y="827" width="377" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="可分批保存；全部题目批完后生成最终成绩。" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=left;verticalAlign=middle;spacing=8;text;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="45" y="900" width="737" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="关闭" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#FFFFFF;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="450" y="960" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="保存批改" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#111111;strokeColor=#444444;fillColor=#EEEEEE;align=center;verticalAlign=middle;spacing=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="615" y="960" width="167" height="46" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,40 @@
+@startuml
+top to bottom direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 14
+skinparam roundCorner 0
+skinparam ArrowColor #555555
+skinparam rectangle {
+ BackgroundColor white
+ BorderColor #333333
+}
+rectangle "校园在线学习平台" as Platform
+rectangle "用户管理\n注册登录、个人资料\n教师审核、角色权限" as User
+rectangle "课程管理\n课程与章节维护\n资料上传、课程审核" as Course
+rectangle "在线学习\n浏览课程、加入课程\n视频与文档学习" as Learning
+rectangle "作业与考试\n作业提交与批改\n题库、组卷与阅卷" as Assessment
+rectangle "互动交流\n课程讨论\n师生私信" as Communication
+rectangle "学习进度\n章节进度、续播位置\n作业状态、考试成绩" as Progress
+rectangle "证书管理\n资格检查\n证书领取与打印" as Certificate
+rectangle "系统管理\n基础设置\n数据备份与恢复" as Management
+Platform --> User
+Platform --> Course
+Platform --> Learning
+Platform --> Assessment
+Platform --> Communication
+Platform --> Progress
+Platform --> Certificate
+Platform --> Management
+User -[hidden]right-> Course
+Course -[hidden]right-> Learning
+Learning -[hidden]right-> Assessment
+Communication -[hidden]right-> Progress
+Progress -[hidden]right-> Certificate
+Certificate -[hidden]right-> Management
+User -[hidden]down-> Communication
+Course -[hidden]down-> Progress
+Learning -[hidden]down-> Certificate
+Assessment -[hidden]down-> Management
+@enduml
