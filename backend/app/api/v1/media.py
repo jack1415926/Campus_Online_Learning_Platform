@@ -55,7 +55,9 @@ def detect_media_type(mime: str) -> MediaType:
 
 @router.get("/categories", response_model=list[MediaCategoryResponse])
 def list_media_categories(requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    results = MediaCategoryService.list_categories(db)
+    results = MediaCategoryService.list_categories(
+        db, uploaded_by=None if "admin" in access.roles_for(db, requester) else str(requester.id)
+    )
     items = []
     for cat, count in results:
         item = MediaCategoryResponse.model_validate(cat)

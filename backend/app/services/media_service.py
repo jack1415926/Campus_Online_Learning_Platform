@@ -93,15 +93,16 @@ class MediaService:
 class MediaCategoryService:
 
     @staticmethod
-    def list_categories(db: Session):
+    def list_categories(db: Session, uploaded_by: str | None = None):
         stmt = select(MediaCategory).order_by(MediaCategory.created_at.desc())
         cats = list(db.execute(stmt).scalars().all())
         result = []
         for c in cats:
+            assets = select(MediaAsset).where(MediaAsset.category_id == c.id)
+            if uploaded_by is not None:
+                assets = assets.where(MediaAsset.uploaded_by == uploaded_by)
             count = db.execute(
-                select(func.count()).select_from(
-                    select(MediaAsset).where(MediaAsset.category_id == c.id).subquery()
-                )
+                select(func.count()).select_from(assets.subquery())
             ).scalar() or 0
             result.append((c, count))
         return result
