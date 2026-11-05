@@ -8,7 +8,6 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session as DbSession
 
 from app.models.session import Session, SessionStatus
-from app.config import settings
 
 # Session timeout: 2 hours
 SESSION_TIMEOUT_MINUTES = 120

@@ -9,8 +9,8 @@ from app.config import settings
 from app.models import Base  # noqa: F401
 from app.models import (  # noqa: F401
     User, Role, Permission, UserRole, role_permissions,
-    Category, Tag, MediaAsset, MediaType, Course, Chapter,
-    CourseStatus, ContentType, Difficulty, course_tags,
+    Category, MediaAsset, MediaType, Course, Chapter,
+    CourseStatus, ContentType, Difficulty,
 )
 
 config = context.config

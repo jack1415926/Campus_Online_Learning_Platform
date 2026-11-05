@@ -1,11 +1,9 @@
-"""Schemas for categories and tags (CM-06)."""
+"""Schemas for categories."""
 
-import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models.base import UUIDPrimaryKey, TimestampMixin
 
 
 class CategoryBase(BaseModel):
@@ -37,20 +35,5 @@ class CategoryResponse(CategoryBase):
 class CategoryTreeNode(CategoryResponse):
     """Category with nested children for tree rendering."""
     children: list["CategoryTreeNode"] = []
-
-    model_config = {"from_attributes": True}
-
-
-class TagBase(BaseModel):
-    name: str = Field(..., max_length=100)
-
-
-class TagCreate(TagBase):
-    pass
-
-
-class TagResponse(TagBase):
-    id: str
-    created_at: datetime
 
     model_config = {"from_attributes": True}

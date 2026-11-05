@@ -1,4 +1,4 @@
-"""Schemas for courses and chapters (CM-01 through CM-07)."""
+"""Schemas for courses and chapters."""
 
 from datetime import datetime
 from typing import Literal
@@ -16,7 +16,6 @@ class ChapterBase(BaseModel):
     sort_order: int = Field(default=0, ge=0, le=1000000)
     is_required: bool = True
     estimated_minutes: int = 0
-    unlock_condition: dict | None = None
 
 
 class ChapterCreate(ChapterBase):
@@ -31,7 +30,6 @@ class ChapterUpdate(BaseModel):
     sort_order: int = Field(default=0, ge=0, le=1000000)
     is_required: bool | None = None
     estimated_minutes: int | None = None
-    unlock_condition: dict | None = None
 
 
 class ChapterResponse(ChapterBase):
@@ -53,9 +51,7 @@ class CourseBase(BaseModel):
 
 
 class CourseCreate(CourseBase):
-    tag_ids: list[str] = []
     chapters: list[ChapterCreate] = []
-    completion_config: dict | None = None
 
 
 class CourseUpdate(BaseModel):
@@ -67,8 +63,6 @@ class CourseUpdate(BaseModel):
     difficulty: Difficulty | None = None
     estimated_minutes: int | None = None
     instructor: str | None = Field(None, max_length=100)
-    tag_ids: list[str] | None = None
-    completion_config: dict | None = None
 
 
 class CourseResponse(CourseBase):
@@ -76,12 +70,8 @@ class CourseResponse(CourseBase):
     cover_preview_url: str | None = None
     id: str
     status: CourseStatus
-    version: int
-    rating: float | None = None
     created_by: str | None = None
     created_at: datetime
-    tag_ids: list[str] = []
-    completion_config: dict | None = None
     review_reason: str | None = None
     is_enrolled: bool = False
     can_manage: bool = False
@@ -106,6 +96,6 @@ class CourseListFilter(BaseModel):
 
 
 class PublishAction(BaseModel):
-    """Course publish workflow action (CM-04)."""
+    """Course publish workflow action."""
     action: Literal["submit_review", "publish", "reject", "archive", "unpublish"]
     reason: str = Field(default="", max_length=1000)

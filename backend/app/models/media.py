@@ -1,6 +1,6 @@
-"""Media asset library model (DM-01).
+"""Media asset library model.
 
-Unified storage for videos, documents, images, audio.
+Unified storage for videos, documents, images.
 Supports cross-course reuse via content reference.
 """
 
@@ -16,11 +16,10 @@ class MediaType(str, enum.Enum):
     video = "video"
     document = "document"
     image = "image"
-    audio = "audio"
 
 
 class MediaAsset(Base, UUIDPrimaryKey, TimestampMixin):
-    """A reusable media asset stored in object storage."""
+    """A reusable media asset stored on the local filesystem."""
 
     __tablename__ = "media_assets"
 
@@ -37,7 +36,7 @@ class MediaAsset(Base, UUIDPrimaryKey, TimestampMixin):
     # Video-specific
     duration: Mapped[int | None] = mapped_column(nullable=True)  # seconds
     resolution: Mapped[str | None] = mapped_column(String(20), nullable=True)  # e.g. "1080p"
-    # Organization
+    # Categorization
     category_id: Mapped[str | None] = mapped_column(
         String(36), nullable=True, index=True
     )  # loose reference, not FK (assets can be uncategorized)

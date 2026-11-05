@@ -29,7 +29,7 @@ def digest(path):
 
 def local_state():
     url = make_url(settings.database_url)
-    if (url.host, url.port, url.database, url.username) != ("127.0.0.1", 3309, "campus_learning", "campus_app") or settings.storage_backend != "local":
+    if (url.host, url.port, url.database, url.username) != ("127.0.0.1", 3309, "campus_learning", "campus_app"):
         raise ValueError("This script supports only the project's local MySQL and file storage.")
     state = json.loads(STATE.read_text(encoding="utf-8"))
     with connect(state["root_password"]) as db:

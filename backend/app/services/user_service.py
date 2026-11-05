@@ -5,16 +5,14 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import selectinload
 
-from app.core.rbac import get_data_scope_filter
+from app.core.campus_access import require_admin
 from app.core.security import hash_password
-from app.core.seed import assign_role
-from app.models.role import DataScope
 from app.models.user import User, UserStatus
 from app.schemas.user import UserCreateRequest, UserGroupFilter, UserUpdateRequest
 
 
 class UserService:
-    """Business logic for user management (UM-03, UM-04, UM-05)."""
+    """Business logic for user management."""
 
     @staticmethod
     def list_users(
@@ -25,17 +23,14 @@ class UserService:
         page_size: int = 20,
         review_status: str | None = None,
     ) -> tuple[list[User], int]:
-        """List users with data-scope filtering and optional grouping filters."""
-        scope_filter = get_data_scope_filter(db, requester)
+        """List users with optional status and name filters."""
+        require_admin(db, requester)
 
         stmt = select(User)
         if review_status:
             stmt = stmt.where(User.teacher_review_status == review_status)
 
-        # Apply data scope
-        if "user_id" in scope_filter:
-            stmt = stmt.where(User.id == scope_filter["user_id"])
-        # Apply user-provided filters (UM-04 user grouping)
+        # Apply user-provided filters
         if filt:
             if filt.status:
                 stmt = stmt.where(User.status == UserStatus(filt.status))
@@ -45,7 +40,6 @@ class UserService:
                     or_(
                         User.full_name.ilike(kw),
                         User.username.ilike(kw),
-                        User.employee_id.ilike(kw),
                     )
                 )
 
@@ -75,7 +69,7 @@ class UserService:
     def create_user(
         db: Session, body: UserCreateRequest
     ) -> User:
-        """Admin-created user (UM-03 manual creation)."""
+        """Admin-created user."""
         # Check uniqueness
         existing = db.execute(
             select(User).where(
@@ -90,9 +84,7 @@ class UserService:
             email=body.email,
             password_hash=hash_password(body.password),
             full_name=body.full_name,
-            employee_id=body.employee_id,
             phone=body.phone,
-            custom_fields=body.custom_fields,
             status=UserStatus.active,
         )
         db.add(user)
@@ -112,17 +104,7 @@ class UserService:
 
     @staticmethod
     def deactivate_user(db: Session, user: User) -> User:
-        """Soft-delete: set status to inactive (UM-03 绂昏亴鍋滅敤)."""
+        """Soft-delete: set status to inactive."""
         user.status = UserStatus.inactive
         db.flush()
         return user
-
-    @staticmethod
-    def assign_user_role(
-        db: Session,
-        user: User,
-        role_code: str,
-        data_scope: DataScope = DataScope.self,
-    ) -> None:
-        """Assign a role with data scope to a user."""
-        assign_role(db, user, role_code, data_scope)

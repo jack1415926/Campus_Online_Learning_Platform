@@ -1,11 +1,11 @@
-"""Course management API (CM-01 through CM-07)."""
+"""Course management API."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from datetime import datetime, timezone
 from app.core import campus_access as access
 from app.models.learning import CourseAssignment, AssignmentType, LearningRecord
-from app.models.exam import Exam, ExamRecord
+from app.models.exam import Exam
 from app.models.media import MediaAsset
 from app.models.homework import Homework, HomeworkSubmission
 from app.models.communication import DiscussionTopic, PrivateMessage
@@ -38,17 +38,14 @@ def _check_perm(db: Session, user: User, *perms: str):
 def _course_to_response(course: Course, db, user) -> dict:
     data = {}
     for k in CourseResponse.model_fields:
-        if k in ("tag_ids", "is_enrolled", "can_manage", "can_edit", "can_learn", "cover_preview_url"):
+        if k in ("is_enrolled", "can_manage", "can_edit", "can_learn", "cover_preview_url"):
             continue
         data[k] = getattr(course, k)
-    data["tag_ids"] = [str(t.id) for t in course.tags]
     data["cover_preview_url"] = course.cover_image_url
     data["can_manage"] = access.can_manage(db, user, course)
     data["can_edit"] = data["can_manage"] and course.status == CourseStatus.draft
     data["is_enrolled"] = str(course.id) in access.enrolled_ids(db, user)
     data["can_learn"] = "student" in access.roles_for(db, user) and data["is_enrolled"] and course.status in (CourseStatus.published, CourseStatus.archived)
-    if not data["can_manage"]:
-        data["completion_config"] = None
     if course.cover_image_url and course.cover_image_url.startswith("/storage/"):
         asset = db.scalar(select(MediaAsset).where(MediaAsset.storage_key == course.cover_image_url.removeprefix("/storage/")))
         if asset:
@@ -87,12 +84,6 @@ def _validate_resources(db, requester, body, course_id=None, chapter=None):
         if not asset or asset.media_type.value != "image":
             raise HTTPException(422, "请使用素材库中上传的封面图片")
         access.require_asset_owner(db, requester, asset)
-    for link in (getattr(body, "completion_config", None) or {}).get("exams", []):
-        exam = db.get(Exam, link.get("exam_id"))
-        if not exam or ("admin" not in access.roles_for(db, requester) and str(exam.created_by) != str(requester.id)):
-            raise HTTPException(403, "不能关联其他教师的考试")
-        if exam.course_id and str(exam.course_id) != course_id:
-            raise HTTPException(409, "考试已关联其他课程")
 
 
 @router.get("", response_model=PageResponse[CourseResponse])
@@ -134,7 +125,7 @@ def get_course(
     data["chapters"] = [ChapterResponse.model_validate(ch) for ch in course.chapters]
     if not data["can_manage"] and not data["can_learn"]:
         for chapter in data["chapters"]:
-            chapter.text_content = chapter.content_ref_id = chapter.unlock_condition = None
+            chapter.text_content = chapter.content_ref_id = None
     return CourseDetailResponse(**data)
 
 
@@ -253,7 +244,7 @@ def add_chapter(
         title=body.title, content_type=body.content_type,
         content_ref_id=body.content_ref_id, text_content=body.text_content,
         sort_order=body.sort_order, is_required=body.is_required,
-        estimated_minutes=body.estimated_minutes, unlock_condition=body.unlock_condition,
+        estimated_minutes=body.estimated_minutes,
     )
     db.add(chapter)
     db.commit()

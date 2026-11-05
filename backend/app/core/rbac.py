@@ -1,4 +1,4 @@
-"""RBAC enforcement: permission checking and data-scope filtering."""
+"""RBAC enforcement: permission checking."""
 
 from collections.abc import Callable
 
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.database import get_db
-from app.models.role import DataScope, Permission, Role, UserRole, role_permissions
+from app.models.role import Permission, Role, UserRole, role_permissions
 from app.models.user import User
 
 
@@ -25,16 +25,6 @@ def load_user_permissions(db: Session, user_id: str) -> set[str]:
     return {row[0] for row in db.execute(stmt).all()}
 
 
-def load_user_data_scope(db: Session, user_id: str) -> DataScope:
-    stmt = select(UserRole.data_scope).where(UserRole.user_id == user_id)
-    scopes = [row[0] for row in db.execute(stmt).all()]
-    if DataScope.company in scopes:
-        return DataScope.company
-    if DataScope.department in scopes:
-        return DataScope.department
-    return DataScope.self
-
-
 def require_permission(*required_perms: str) -> Callable:
     def _check(
         user: User = Depends(get_current_user),
@@ -48,10 +38,3 @@ def require_permission(*required_perms: str) -> Callable:
             )
         return user
     return _check
-
-
-def get_data_scope_filter(db: Session, user: User) -> dict:
-    scope = load_user_data_scope(db, user.id)
-    if scope == DataScope.company:
-        return {}
-    return {"user_id": user.id}

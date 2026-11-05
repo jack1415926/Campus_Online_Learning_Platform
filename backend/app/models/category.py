@@ -1,4 +1,4 @@
-"""Course category (multi-level tree) and tag models (CM-06)."""
+"""Course category (multi-level tree) models."""
 
 from sqlalchemy import CHAR, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,16 +34,4 @@ class Category(Base, UUIDPrimaryKey, TimestampMixin):
     )
     courses: Mapped[list["Course"]] = relationship(
         "Course", back_populates="category"
-    )
-
-
-class Tag(Base, UUIDPrimaryKey, TimestampMixin):
-    """Course tag for flexible labeling."""
-
-    __tablename__ = "tags"
-
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
-
-    courses: Mapped[list["Course"]] = relationship(
-        "Course", secondary="course_tags", back_populates="tags"
     )

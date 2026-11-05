@@ -2,7 +2,6 @@
 
 import uuid
 from typing import Literal
-from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -19,7 +18,6 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
     full_name: str = Field(..., min_length=1, max_length=100)
-    employee_id: str | None = Field(None, max_length=50)
     phone: str | None = None
     role: Literal["student", "teacher"] = "student"
     _password_limit = field_validator("password")(validate_password)

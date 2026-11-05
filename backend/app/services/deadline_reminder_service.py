@@ -18,7 +18,6 @@ from sqlalchemy.orm import Session
 from app.models.course import Course
 from app.models.learning import CourseAssignment, LearningRecord, CompletionStatus
 from app.models.notification import Notification, NotificationType
-from app.models.user import User
 from app.services.learning_service import AssignmentService
 from app.services.notification_service import NotificationService
 

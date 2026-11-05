@@ -1,8 +1,6 @@
 """SQLAlchemy database engine and session management.
 
 Uses synchronous PyMySQL driver with SQLAlchemy sync engine.
-FastAPI handles async via threadpool automatically.
-This is more stable on Windows than async aiomysql.
 """
 
 from collections.abc import Generator
@@ -12,11 +10,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
-# Convert async URL to sync URL
-sync_url = settings.database_url.replace("+aiomysql", "")
 
 engine = create_engine(
-    sync_url,
+    settings.database_url,
     echo=settings.debug,
     pool_size=5,
     max_overflow=5,

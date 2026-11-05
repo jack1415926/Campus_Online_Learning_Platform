@@ -1,4 +1,4 @@
-"""Schemas for learning management (LM-01 through LM-09)."""
+"""Schemas for learning management."""
 
 from datetime import datetime
 
@@ -27,7 +27,6 @@ class ProgressUpdateRequest(BaseModel):
     learning_seconds: int = Field(default=0, ge=0, le=86400)
     progress_percent: float = Field(default=0.0, ge=0, le=100, allow_inf_nan=False)
     resume_position: dict | None = None
-    min_watch_seconds: int | None = None
 
     @field_validator("resume_position")
     @classmethod
@@ -54,15 +53,6 @@ class LearningRecordResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ExamProgressItem(BaseModel):
-    exam_id: str
-    title: str = ""
-    passed: bool = False
-    attempts: int = 0
-    max_attempts: int = 10
-    remaining: int = 10
-
-
 class CourseProgressResponse(BaseModel):
     course_id: str
     total_chapters: int = 0
@@ -71,7 +61,3 @@ class CourseProgressResponse(BaseModel):
     total_learning_seconds: int = 0
     status: CompletionStatus = CompletionStatus.not_started
     is_complete: bool = False
-    exam_required: bool = False
-    can_take_exam: bool = False
-    all_exams_passed: bool = True
-    exams: list[ExamProgressItem] = []

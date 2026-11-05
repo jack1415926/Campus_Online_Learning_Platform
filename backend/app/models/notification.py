@@ -18,8 +18,6 @@ class NotificationType(str, enum.Enum):
 
 class NotificationChannel(str, enum.Enum):
     in_app = "in_app"
-    email = "email"
-    wecom = "wecom"  # reserved for Phase 8
 
 
 class NotificationStatus(str, enum.Enum):
@@ -29,7 +27,7 @@ class NotificationStatus(str, enum.Enum):
 
 
 class Notification(Base, UUIDPrimaryKey, TimestampMixin):
-    """A notification sent to a user (NTF-01, NTF-02)."""
+    """A notification sent to a user."""
 
     __tablename__ = "notifications"
     __table_args__ = (UniqueConstraint("event_key", name="uq_notification_event"),)

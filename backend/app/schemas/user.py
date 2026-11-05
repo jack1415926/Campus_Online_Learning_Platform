@@ -15,12 +15,9 @@ class UserResponse(BaseModel):
     username: str
     email: str
     full_name: str
-    employee_id: str | None = None
     phone: str | None = None
     avatar_url: str | None = None
-    hire_date: datetime | None = None
     status: str
-    custom_fields: dict | None = None
     roles: list[str] = []
     requested_role: str = "student"
     teacher_review_status: str | None = None
@@ -39,26 +36,22 @@ class UserUpdateRequest(BaseModel):
     email: EmailStr | None = None
     phone: str | None = None
     avatar_url: str | None = Field(None, max_length=500)
-    custom_fields: dict | None = None
 
 
 class UserCreateRequest(BaseModel):
-    """Admin-created user (UM-03 manual user creation)."""
+    """Admin-created user."""
 
     username: str = Field(..., min_length=3, max_length=100)
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
     full_name: str = Field(..., min_length=1, max_length=100)
-    employee_id: str | None = Field(None, max_length=50)
     phone: str | None = None
-    custom_fields: dict | None = None
     role_code: Literal["student", "teacher", "admin"] = "student"
     _password_limit = field_validator("password")(validate_password)
-    data_scope: str = "self"
 
 
 class UserGroupFilter(BaseModel):
-    """Filter criteria for user grouping (UM-04)."""
+    """Filter criteria for user grouping."""
 
     status: str | None = None
-    keyword: str | None = None  # search name/username/employee_id
+    keyword: str | None = None  # search name/username

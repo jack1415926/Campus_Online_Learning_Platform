@@ -1,8 +1,8 @@
-"""Schemas for notifications (NTF-01 through NTF-04)."""
+"""Schemas for notifications."""
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 from app.models.notification import (
     NotificationChannel, NotificationStatus, NotificationType,

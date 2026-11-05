@@ -1,4 +1,4 @@
-// LMS Main Application - Vue 3 SPA (Complete)
+// Campus learning platform - Vue 3 application
 const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, shallowRef } = Vue;
 const { ElMessage, ElMessageBox } = ElementPlus;
 const platformState = reactive({platform_name:'校园在线学习平台',registration_open:true});
@@ -17,7 +17,7 @@ window.addEventListener('resize', () => { windowWidth.value = window.innerWidth;
 
 const STATUS_MAP = { draft: { t: "草稿", c: "info" }, pending_review: { t: "审核中", c: "warning" }, published: { t: "已发布", c: "success" }, archived: { t: "已下架", c: "danger" } };
 const DIFF_MAP = { beginner: { t: "入门", c: "success" }, intermediate: { t: "中级", c: "warning" }, advanced: { t: "高级", c: "danger" } };
-const TYPE_MAP = { video: "视频", document: "文档", text: "文字", image: "图片", scorm: "SCORM" };
+const TYPE_MAP = { video: "视频", document: "文档", text: "文字", image: "图片" };
 
 // ===== Login =====
 const LoginPage = {
@@ -104,7 +104,7 @@ const CourseListPage = {
     const courses = ref([]); const total = ref(0); const page = ref(1); const pageSize = 12;
     const keyword = ref(""); const statusFilter = ref(""); const managed=ref(api.hasRole("teacher"));
     const showCreate = ref(false); const creating = ref(false);
-    const form = reactive({ title:"", description:"", difficulty:"beginner", estimated_minutes:60, instructor:"", cover_image_url:"", tag_ids:[] });
+    const form = reactive({ title:"", description:"", difficulty:"beginner", estimated_minutes:60, instructor:"", cover_image_url:"" });
     const coverColor = (t) => { const colors = ["linear-gradient(135deg,#7c3aed,#4c1d95)","linear-gradient(135deg,#f093fb,#f5576c)","linear-gradient(135deg,#8b5cf6,#d946ef)","linear-gradient(135deg,#43e97b,#38f9d7)"]; return colors[(t||"").charCodeAt(0) % colors.length]; };
     const load = async () => {
       try { const params = { page: page.value, page_size: pageSize, managed:managed.value }; if (keyword.value) params.keyword = keyword.value; if (statusFilter.value) params.status = statusFilter.value; const r = await api.listCourses(params); courses.value = r.items || []; total.value = r.meta.total; } catch(e) { ElMessage.error(e.message); }
@@ -244,29 +244,9 @@ const CourseDetailPage = {
             <el-descriptions-item label="已完成">{{ progress.completed_chapters }}</el-descriptions-item>
             <el-descriptions-item label="学习时长">{{ Math.round((progress.total_learning_seconds||0)/60) }}分钟</el-descriptions-item>
             <el-descriptions-item label="状态">
-              <el-tag :type="progress.is_complete?'success':(statusText==='待考试'?'warning':(statusText==='学习中'?'warning':'info'))" size="small">{{ statusText }}</el-tag>
+              <el-tag :type="progress.is_complete?'success':(statusText==='学习中'?'warning':'info')" size="small">{{ statusText }}</el-tag>
             </el-descriptions-item>
           </el-descriptions>
-          <div v-if="progress.exam_required && progress.exams && progress.exams.length" style="margin-top:16px">
-            <div style="font-weight:bold;font-size:13px;margin-bottom:8px">课程考试</div>
-            <div v-for="ex in progress.exams" :key="ex.exam_id" style="display:flex;justify-content:space-between;align-items:center;padding:8px;border:1px solid #ebeef5;border-radius:6px;margin-bottom:8px">
-              <div style="flex:1">
-                <div style="font-size:13px">{{ ex.title }}</div>
-                <div style="font-size:12px;color:#909399;margin-top:2px">
-                  <el-tag v-if="ex.passed" type="success" size="small">已通过</el-tag>
-                  <el-tag v-else type="warning" size="small">未通过</el-tag>
-                  <span style="margin-left:6px">已考 {{ ex.attempts }}/{{ ex.max_attempts }} 次</span>
-                </div>
-              </div>
-              <el-button size="small" type="primary" @click="goExam(ex.exam_id)" :disabled="!progress.can_take_exam || ex.passed">{{ !progress.can_take_exam ? '学完章节可考' : (ex.passed ? '已通过' : '去考试') }}</el-button>
-            </div>
-          </div>
-          <div v-if="progress.is_complete" style="margin-top:16px;text-align:center">
-            
-          </div>
-          <div v-else-if="progress.can_take_exam && progress.exam_required" style="margin-top:16px;text-align:center">
-            <span style="font-size:12px;color:#e6a23c">章节已学完，请完成考试后课程才算完成</span>
-          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -330,23 +310,6 @@ const CourseDetailPage = {
       <template #footer><el-button @click="showEditCh=false">取消</el-button><el-button type="primary" @click="doEditCh">保存</el-button></template>
     </el-dialog>
 
-    <el-dialog v-model="showExamConfig" title="关联考试" width="600px">
-      <div style="font-size:13px;color:#909399;margin-bottom:12px">所有章节学完后需通过以下全部考试，课程才算完成。可为每门考试单独设置重考次数。</div>
-      <div v-for="(link, idx) in examLinks" :key="idx" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <el-select v-model="link.exam_id" filterable placeholder="选择考试" style="flex:1">
-          <el-option v-for="ex in allExams" :key="ex.id" :label="ex.title" :value="ex.id" />
-        </el-select>
-        <span style="font-size:13px;white-space:nowrap">重考</span>
-        <el-input-number v-model="link.max_attempts" :min="1" :max="100" style="width:100px" />
-        <span style="font-size:13px;white-space:nowrap">次</span>
-        <el-button text type="danger" @click="removeExamLink(idx)"><el-icon><Delete /></el-icon></el-button>
-      </div>
-      <div style="margin-top:8px"><el-button size="small" @click="addExamLink">添加考试</el-button></div>
-      <template #footer>
-        <el-button @click="showExamConfig=false">取消</el-button>
-        <el-button type="primary" @click="saveExamConfig">保存</el-button>
-      </template>
-    </el-dialog>
   </div>`,
   setup(props) {
     const course = ref(null); const progress = ref({}); const activeChapter = ref(null);
@@ -358,14 +321,12 @@ const CourseDetailPage = {
     const editChForm = reactive({ title:"", content_type:"video", text_content:"", content_ref_id:"", estimated_minutes:0, is_required:true, sort_order:0 });
     const mediaList = ref([]);
     const selectedMediaName = computed(() => { const m = mediaList.value.find(x => x.id === chForm.content_ref_id); return m ? m.name : ""; });
-    const videoUrl = ref(""); const docUrl = ref(""); const docFileName = ref(""); const imageUrl = ref(""); const pdfCanvas = ref(null); let learnSeconds = 0; let maxWatchedTime = 0; const videoCompleted = ref(false); const videoDuration = ref(0); const pdfDoc = shallowRef(null); const pdfPageNum = ref(1); const pdfTotalPages = ref(0); const pdfScale = ref(1.2); const pdfLoading = ref(false);
+    const videoUrl = ref(""); const docUrl = ref(""); const docFileName = ref(""); const imageUrl = ref(""); const pdfCanvas = ref(null); let learnSeconds = 0; const videoCompleted = ref(false); const videoDuration = ref(0); const pdfDoc = shallowRef(null); const pdfPageNum = ref(1); const pdfTotalPages = ref(0); const pdfScale = ref(1.2); const pdfLoading = ref(false);
     const statusText = computed(() => {
       if (progress.value.is_complete) return "已完成";
-      if (progress.value.can_take_exam && progress.value.exam_required) return "待考试";
       if (progress.value.status === "in_progress") return "学习中";
       return "未开始";
     });
-    const goExam = (examId) => { navigate("exam/" + examId); };
     const isPdfDoc = computed(() => (docFileName.value || "").toLowerCase().endsWith(".pdf"));
     const downloadDoc = () => { if (docUrl.value) window.open(docUrl.value, "_blank"); };
     const renderPdfPage = async () => {
@@ -399,26 +360,7 @@ const CourseDetailPage = {
     const pdfNext = async () => { if (pdfPageNum.value < pdfTotalPages.value) { pdfPageNum.value++; await renderPdfPage(); } };
     const pdfZoomIn = async () => { pdfScale.value = Math.min(pdfScale.value + 0.3, 3); await renderPdfPage(); };
     const pdfZoomOut = async () => { pdfScale.value = Math.max(pdfScale.value - 0.3, 0.5); await renderPdfPage(); };
-    const fullscreenPdf = () => {};  // kept for compatibility
     let editingChapter = null;
-    const showExamConfig = ref(false); const examLinks = ref([]); const allExams = ref([]);
-
-    const loadExamOptions = async () => { try { const r = await api.listExams({ page:1, page_size:100 }); allExams.value = (r.items || []).map(e => ({ id: e.id, title: e.title })); } catch(e) {} };
-    const openExamConfig = () => {
-      const cc = course.value.completion_config || {};
-      const links = (cc.exams || []).map(l => ({ exam_id: l.exam_id, max_attempts: l.max_attempts || 10 }));
-      examLinks.value = links.length ? links : [{ exam_id: "", max_attempts: 10 }];
-      loadExamOptions();
-      showExamConfig.value = true;
-    };
-    const addExamLink = () => { examLinks.value.push({ exam_id: "", max_attempts: 10 }); };
-    const removeExamLink = (idx) => { examLinks.value.splice(idx, 1); };
-    const saveExamConfig = async () => {
-      const valid = examLinks.value.filter(l => l.exam_id);
-      if (!valid.length) return ElMessage.warning("请至少选择一门考试，或取消关联");
-      const completion_config = { exam_mode: "all", exams: valid.map(l => ({ exam_id: l.exam_id, max_attempts: l.max_attempts || 10 })) };
-      try { await api.updateCourse(props.id, { completion_config }); ElMessage.success("保存成功"); showExamConfig.value = false; load(); } catch(e) { ElMessage.error(e.message); }
-    };
     const loadMedia = async (contentType) => {
       try {
         const type = contentType || "document";
@@ -450,12 +392,12 @@ const CourseDetailPage = {
 
     const selectChapter = async (ch) => {
       await saveVideo(); videoElement=null; lastVideoSave=0; courseStartTime=Date.now();
-      activeChapter.value = ch; videoUrl.value = ""; docUrl.value = ""; imageUrl.value = ""; learnSeconds = 0; maxWatchedTime = 0; videoCompleted.value = false; videoDuration.value = 0;
+      activeChapter.value = ch; videoUrl.value = ""; docUrl.value = ""; imageUrl.value = ""; learnSeconds = 0; videoCompleted.value = false; videoDuration.value = 0;
       if (ch.content_ref_id) {
         try {
           const m = await api.getMedia(ch.content_ref_id);
           if (m) {
-            // 通过统一接口获取实时可访问 URL(本地或 OSS 签名 URL)
+            // 通过统一接口获取实时可访问 URL(短期鉴权链接)
             let url = m.file_url || "";
             try { const r = await api.getMediaUrl(m.id); url = r.url || url; } catch(e) {}
             if (ch.content_type === "video") videoUrl.value = url;
@@ -488,18 +430,6 @@ const CourseDetailPage = {
       } catch(e) { ElMessage.error(e.message); }
     };
     const onVideoEnded = () => { videoCompleted.value = true; if (activeChapter.value && course.value.can_learn && course.value.status==='published') completeChapter(activeChapter.value); };
-    const resetLearning = async () => {
-      try {
-        await ElMessageBox.confirm("重新学习后将重置当前课程的学习状态（进度、时长、完成记录），是否确定？", "重新学习确认", { type: "warning", confirmButtonText: "确定重新学习", cancelButtonText: "取消" });
-        await api.resetCourseProgress(props.id);
-        completedChapters.value = new Set();
-        progress.value = await api.getCourseProgress(props.id);
-        courseStartTime = Date.now();
-        if (course.value.chapters && course.value.chapters.length > 0) selectChapter(course.value.chapters[0]);
-        ElMessage.success("学习状态已重置，请重新学习");
-      } catch(e) { if (e !== "cancel") ElMessage.error(e.message); }
-    };
-
     const openEdit = () => { showEdit.value = true; };
     const doEdit = async () => { try { await api.updateCourse(props.id, editForm); ElMessage.success("保存成功"); showEdit.value = false; load(); } catch(e) { ElMessage.error(e.message); } };
     const doDelete = async () => { try { await ElMessageBox.confirm("确认删除课程？", "提示", { type: "warning" }); await api.deleteCourse(props.id); ElMessage.success("删除成功"); navigate("courses"); } catch(e) { if (e !== "cancel") ElMessage.error(e.message); } };
@@ -528,7 +458,7 @@ const CourseDetailPage = {
     onUnmounted(() => {saveVideo();});
     const joinCourse=async()=>{try{await api.joinCourse(props.id);ElMessage.success("已加入学习");await load();}catch(e){ElMessage.error(e.message);}};
     const uploadEditCover=async(event)=>{const file=event.target.files[0];if(!file)return;try{const asset=await api.uploadMedia(file);editForm.cover_image_url=asset.file_url;ElMessage.success('封面已上传，保存后生效');}catch(e){ElMessage.error(e.message);}};
-    return { saveVideo, uploadEditCover, joinCourse, course, progress, activeChapter, showEdit, showAddCh, showEditCh, canManage, completedChapters, editForm, chForm, editChForm, mediaList, selectedMediaName, videoUrl, docUrl, docFileName, imageUrl, isPdfDoc, downloadDoc, fullscreenPdf, pdfCanvas, pdfPageNum, pdfTotalPages, pdfScale, pdfLoading, pdfPrev, pdfNext, pdfZoomIn, pdfZoomOut, DIFF_MAP, STATUS_MAP, TYPE_MAP, selectChapter, onVideoTime, onVideoLoaded, onVideoEnded, videoCompleted, completeChapter, resetLearning, statusText, goExam, showExamConfig, examLinks, allExams, openExamConfig, addExamLink, removeExamLink, saveExamConfig, openEdit, doEdit, doDelete, publish, openAddCh, doAddCh, delChapter, openEditCh, doEditCh, loadMedia, onTypeChange, onEditTypeChange, navigate };
+    return { saveVideo, uploadEditCover, joinCourse, course, progress, activeChapter, showEdit, showAddCh, showEditCh, canManage, completedChapters, editForm, chForm, editChForm, mediaList, selectedMediaName, videoUrl, docUrl, docFileName, imageUrl, isPdfDoc, downloadDoc, pdfCanvas, pdfPageNum, pdfTotalPages, pdfScale, pdfLoading, pdfPrev, pdfNext, pdfZoomIn, pdfZoomOut, DIFF_MAP, STATUS_MAP, TYPE_MAP, selectChapter, onVideoTime, onVideoLoaded, onVideoEnded, videoCompleted, completeChapter, statusText, openEdit, doEdit, doDelete, publish, openAddCh, doAddCh, delChapter, openEditCh, doEditCh, loadMedia, onTypeChange, onEditTypeChange, navigate };
   }
 };
 
@@ -656,8 +586,7 @@ const QuestionBankPage = {
     const bankForm = reactive({ name:"", description:"" });
     const qForm = reactive({ question_type:"single_choice", content:"", options:[{key:"A",text:""},{key:"B",text:""}], difficulty:1, knowledge_point:"", score:1 });
     const correctAnswerInput = ref("");
-    const importing = ref(false);
-    const TYPE_TXT = { single_choice:"\u5355\u9009", multiple_choice:"\u591a\u9009", true_false:"\u5224\u65ad", fill_blank:"\u586b\u7a7a", short_answer:"\u7b80\u7b54" };
+    const TYPE_TXT = { single_choice:"\u5355\u9009", multiple_choice:"\u591a\u9009", true_false:"\u5224\u65ad", short_answer:"\u7b80\u7b54" };
     const filteredQuestions = computed(() => {
       if (!searchKw.value) return questions.value;
       const kw = searchKw.value.toLowerCase();
@@ -723,894 +652,12 @@ const QuestionBankPage = {
         await loadQuestions(); await loadBanks();
       } catch(e) { if(e!=="cancel") ElMessage.error(e.message); }
     };
-    const handleImport = async (file) => {
-      if (!selectedBank.value) return ElMessage.warning("\u8bf7\u5148\u9009\u62e9\u9898\u5e93");
-      importing.value = true;
-      try {
-        const r = await api.importQuestions(selectedBank.value.id, file);
-        let msg = "\u5bfc\u5165\u6210\u529f: " + r.imported + "\u9898";
-        if (r.errors && r.errors.length) msg += "\n\u9519\u8bef: " + r.errors.join("; ");
-        if (r.skipped) msg += "\n\u8df3\u8fc7: " + r.skipped + "\u884c";
-        ElMessageBox.alert(msg, "\u5bfc\u5165\u7ed3\u679c", { type: r.errors.length?"warning":"success" });
-        await loadQuestions(); await loadBanks();
-      } catch(e) { ElMessage.error(e.message); }
-      importing.value = false;
-      return false;
-    };
-    const downloadTemplate = async () => {
-      try {
-        const token = api.getToken();
-        const resp = await fetch(api.getQuestionBankTemplateUrl(), { headers: token ? { Authorization: "Bearer " + token } : {} });
-        if (!resp.ok) throw new Error("下载失败");
-        const blob = await resp.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "question_import_template.xlsx"; a.click();
-        URL.revokeObjectURL(url);
-      } catch(e) { ElMessage.error(e.message); }
-    };
-
     onMounted(loadBanks);
-    return { editingQuestion,openQuestion,banks, selectedBank, questions, total, page, pageSize, searchKw, showBankCreate, showQCreate, editingBankId, bankForm, qForm, correctAnswerInput, importing, TYPE_TXT, filteredQuestions, loadBanks, selectBank, loadQuestions, saveBank, editBank, delBank, createQuestion, delQuestion, handleImport, downloadTemplate, navigate };
+    return { editingQuestion,openQuestion,banks, selectedBank, questions, total, page, pageSize, searchKw, showBankCreate, showQCreate, editingBankId, bankForm, qForm, correctAnswerInput, TYPE_TXT, filteredQuestions, loadBanks, selectBank, loadQuestions, saveBank, editBank, delBank, createQuestion, delQuestion, navigate };
   }
 };
 
-// ===== Exam List + Create =====
 
-// ===== Exam Create Page =====
-
-// ===== Practice Page (在线刷题) =====
-const PracticePage = {
-  template: `
-  <div>
-    <h2 style="margin-bottom:16px">在线刷题</h2>
-
-    <el-row :gutter="20">
-      <el-col :span="6">
-        <el-card shadow="never" style="margin-bottom:16px">
-          <template #header><span>题库分类</span></template>
-          <div style="max-height:600px;overflow-y:auto">
-            <div @click="selectBank('')"
-              :style="{padding:'12px',borderRadius:'8px',marginBottom:'8px',cursor:'pointer',
-              background: filter.question_bank_id===''?'#f3edff':'#fff',
-              border: filter.question_bank_id===''?'1px solid #7c3aed':'1px solid #ebeef5'}">
-              <div style="font-weight:500;margin-bottom:4px">全部题库</div>
-              <div style="font-size:13px;color:#909399">{{ allQuestions.length }} 题</div>
-            </div>
-            <div v-for="b in bankList" :key="b.id" @click="selectBank(b.id)"
-              :style="{padding:'12px',borderRadius:'8px',marginBottom:'8px',cursor:'pointer',
-              background: filter.question_bank_id===b.id?'#f3edff':'#fff',
-              border: filter.question_bank_id===b.id?'1px solid #7c3aed':'1px solid #ebeef5'}">
-              <div style="font-weight:500;margin-bottom:4px">{{ b.name }}</div>
-              <div style="font-size:13px;color:#909399">{{ b.question_count }} 题</div>
-            </div>
-            <div v-if="uncategorizedCount>0" @click="selectBank('__uncategorized__')"
-              :style="{padding:'12px',borderRadius:'8px',marginBottom:'8px',cursor:'pointer',
-              background: filter.question_bank_id==='__uncategorized__'?'#f3edff':'#fff',
-              border: filter.question_bank_id==='__uncategorized__'?'1px solid #7c3aed':'1px solid #ebeef5'}">
-              <div style="font-weight:500;margin-bottom:4px">未分类</div>
-              <div style="font-size:13px;color:#909399">{{ uncategorizedCount }} 题</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="18">
-    <el-card shadow="never" style="margin-bottom:16px" v-if="!currentQ">
-      <template #header><span>选择刷题范围</span></template>
-      <el-form :model="filter" label-position="top">
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="题型">
-              <el-select v-model="filter.question_type" clearable placeholder="全部题型" style="width:100%">
-                <el-option label="单选题" value="single_choice" />
-                <el-option label="多选题" value="multiple_choice" />
-                <el-option label="判断题" value="true_false" />
-                <el-option label="填空题" value="fill_blank" />
-                <el-option label="简答题" value="short_answer" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="知识点">
-              <el-select v-model="filter.knowledge_point" clearable filterable placeholder="全部知识点" style="width:100%">
-                <el-option v-for="kp in knowledgePoints" :key="kp" :label="kp" :value="kp" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label=" ">
-              <el-button type="primary" @click="startPractice" :disabled="!practiceList.length">开始刷题</el-button>
-              <el-button v-if="errorList.length" type="warning" @click="startErrorRedo">错题重做 ({{ errorList.length }})</el-button>
-              <el-button @click="loadQuestions">刷新题库</el-button>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
-      <el-row :gutter="20" style="margin-top:8px">
-        <el-col :span="6"><el-statistic title="题库总数" :value="practiceList.length" /></el-col>
-        <el-col :span="6"><el-statistic title="已答题数" :value="answeredIds.size" /></el-col>
-        <el-col :span="6"><el-statistic title="剩余题数" :value="Math.max(0, practiceList.length - answeredIds.size)" /></el-col>
-        <el-col :span="6"><el-statistic title="错题数" :value="errorList.length" :value-style="{color: errorList.length?'#f56c6c':'#909399'}" /></el-col>
-      </el-row>
-    </el-card>
-
-    <el-card shadow="never" v-if="currentQ">
-      <template #header>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span>第 {{ qIndex+1 }} 题 <el-tag size="small" style="margin-left:8px">{{ TYPE_TXT[currentQ.question_type] }}</el-tag> <el-tag size="small" type="info" style="margin-left:4px">{{ currentQ.score }}分</el-tag>
-            <span style="margin-left:16px;font-size:13px;color:#909399">已答 {{ answeredIds.size }}/{{ practiceList.length }} · 错题 {{ errorList.length }}</span>
-          </span>
-          <el-button size="small" @click="exitPractice">退出</el-button>
-        </div>
-      </template>
-      <div style="padding:24px">
-        <div style="font-size:16px;font-weight:bold;margin-bottom:20px;line-height:1.6">{{ currentQ.content }}</div>
-        <div v-if="currentQ.question_type==='single_choice'">
-          <el-radio-group v-model="userAnswer" :disabled="showAnswer">
-            <el-radio v-for="opt in currentQ.options" :key="opt.key" :value="opt.key" style="display:block;margin-bottom:12px;font-size:15px">{{ opt.key }}. {{ opt.text }}</el-radio>
-          </el-radio-group>
-        </div>
-        <div v-else-if="currentQ.question_type==='multiple_choice'">
-          <el-checkbox-group v-model="userAnswerMulti" :disabled="showAnswer">
-            <el-checkbox v-for="opt in currentQ.options" :key="opt.key" :value="opt.key" style="display:block;margin-bottom:12px;font-size:15px">{{ opt.key }}. {{ opt.text }}</el-checkbox>
-          </el-checkbox-group>
-        </div>
-        <div v-else-if="currentQ.question_type==='true_false'">
-          <el-radio-group v-model="userAnswer" :disabled="showAnswer">
-            <el-radio value="true" style="margin-right:24px">正确</el-radio>
-            <el-radio value="false">错误</el-radio>
-          </el-radio-group>
-        </div>
-        <div v-else>
-          <el-input v-model="userAnswer" type="textarea" :rows="4" placeholder="请输入答案" :disabled="showAnswer" />
-        </div>
-
-        <div v-if="showAnswer" style="margin-top:24px;padding:16px;border-radius:8px" :style="{background: isCorrect?'#f0f9eb':'#fef0f0'}">
-          <div style="font-weight:bold;margin-bottom:8px">
-            <el-icon :color="isCorrect?'#67c23a':'#f56c6c'"><CircleCheck v-if="isCorrect" /><CircleClose v-else /></el-icon>
-            {{ isCorrect?'回答正确':'回答错误' }}
-          </div>
-          <div style="color:#606266">正确答案：{{ correctAnswerText }}</div>
-          <div v-if="currentQ.explanation" style="color:#909399;margin-top:8px">解析：{{ currentQ.explanation }}</div>
-        </div>
-
-        <div style="margin-top:24px;display:flex;justify-content:space-between">
-          <el-button @click="prevQ" :disabled="qIndex===0">上一题</el-button>
-          <el-button v-if="!showAnswer" type="primary" @click="checkAnswer">确认答案</el-button>
-          <el-button v-else type="primary" @click="nextQ">下一题</el-button>
-        </div>
-      </div>
-    </el-card>
-      </el-col>
-    </el-row>
-  </div>`,
-  setup() {
-    const filter = reactive({ question_bank_id:"", question_type:"", knowledge_point:"" });
-    const allQuestions = ref([]); const practiceList = ref([]);
-    const currentQ = ref(null); const qIndex = ref(0);
-    const userAnswer = ref(""); const userAnswerMulti = ref([]);
-    const showAnswer = ref(false); const isCorrect = ref(false);
-    const knowledgePoints = ref([]);
-    const banks = ref([]);
-    // 仅展示包含已加载题目的题库，题目数从已加载题目统计（与左侧错题集样式一致）
-    const bankList = computed(() => banks.value
-      .map(b => ({ id: b.id, name: b.name, question_count: allQuestions.value.filter(q => q.question_bank_id === b.id).length }))
-      .filter(b => b.question_count > 0));
-    const uncategorizedCount = computed(() => allQuestions.value.filter(q => !q.question_bank_id).length);
-    const selectBank = (id) => { filter.question_bank_id = id; };
-    const answeredIds = ref(new Set()); const errorList = ref([]);
-    const isErrorRedo = ref(false);
-    const TYPE_TXT = { single_choice:"单选题", multiple_choice:"多选题", true_false:"判断题", fill_blank:"填空题", short_answer:"简答题" };
-    const correctAnswerText = computed(() => {
-      if (!currentQ.value) return "";
-      const a = currentQ.value.correct_answer;
-      if (typeof a === "string") return a;
-      if (Array.isArray(a)) return a.join(", ");
-      return JSON.stringify(a);
-    });
-
-    const loadQuestions = async () => {
-      try {
-        banks.value = await api.listQuestionBanks().catch(() => []);
-        // 分页拉取全部题目，确保覆盖所有题库，使左侧分类准确
-        const all = [];
-        let page = 1;
-        let total = Infinity;
-        while (all.length < total) {
-          const r = await api.listQuestions({ page: page, page_size: 500 });
-          const items = r.items || [];
-          total = (r.meta && r.meta.total) || all.length + items.length;
-          all.push(...items);
-          if (items.length === 0) break;
-          page++;
-        }
-        allQuestions.value = all;
-        const kps = new Set();
-        allQuestions.value.forEach(q => { if (q.knowledge_point) kps.add(q.knowledge_point); });
-        knowledgePoints.value = [...kps];
-        updatePracticeList();
-      } catch(e) { ElMessage.error(e.message); }
-    };
-    const updatePracticeList = () => {
-      let list = [...allQuestions.value];
-      if (filter.question_bank_id) {
-        list = list.filter(q => filter.question_bank_id === "__uncategorized__"
-          ? !q.question_bank_id : q.question_bank_id === filter.question_bank_id);
-      }
-      if (filter.question_type) list = list.filter(q => q.question_type === filter.question_type);
-      if (filter.knowledge_point) list = list.filter(q => q.knowledge_point === filter.knowledge_point);
-      practiceList.value = list;
-    };
-    watch(() => [filter.question_bank_id, filter.question_type, filter.knowledge_point], updatePracticeList);
-
-    const startPractice = () => {
-      if (!practiceList.value.length) return;
-      isErrorRedo.value = false;
-      practiceList.value = [...practiceList.value].sort(() => Math.random() - 0.5);
-      qIndex.value = 0; showAnswer.value = false;
-      loadQ();
-    };
-    const startErrorRedo = () => {
-      if (!errorList.value.length) return;
-      isErrorRedo.value = true;
-      practiceList.value = [...errorList.value].sort(() => Math.random() - 0.5);
-      qIndex.value = 0; showAnswer.value = false;
-      loadQ();
-    };
-    const loadQ = () => {
-      currentQ.value = practiceList.value[qIndex.value];
-      userAnswer.value = ""; userAnswerMulti.value = [];
-      showAnswer.value = false; isCorrect.value = false;
-    };
-    const checkAnswer = () => {
-      showAnswer.value = true;
-      const correct = currentQ.value.correct_answer;
-      if (currentQ.value.question_type === "multiple_choice") {
-        const ansSet = new Set(userAnswerMulti.value);
-        const corSet = new Set(Array.isArray(correct) ? correct : [correct]);
-        isCorrect.value = ansSet.size === corSet.size && [...ansSet].every(x => corSet.has(x));
-      } else if (currentQ.value.question_type === "fill_blank") {
-        isCorrect.value = String(userAnswer.value).trim().toLowerCase() === String(correct).trim().toLowerCase();
-      } else {
-        isCorrect.value = String(userAnswer.value) === String(correct);
-      }
-      // Track answered
-      answeredIds.value.add(currentQ.value.id);
-      // Track errors
-      if (!isCorrect.value) {
-        if (!errorList.value.find(q => q.id === currentQ.value.id)) {
-          errorList.value.push(currentQ.value);
-        }
-      } else {
-        // Remove from error list if answered correctly (in redo mode)
-        errorList.value = errorList.value.filter(q => q.id !== currentQ.value.id);
-      }
-    };
-    const prevQ = () => { if (qIndex.value > 0) { qIndex.value--; loadQ(); } };
-    const nextQ = () => {
-      if (qIndex.value < practiceList.value.length - 1) { qIndex.value++; loadQ(); }
-      else {
-        // Finished all questions
-        if (isErrorRedo.value) {
-          ElMessage.success("错题重做完成！剩余错题: " + errorList.value.length);
-        } else {
-          ElMessage.success("全部题目已答完！错题: " + errorList.value.length);
-        }
-        exitPractice();
-      }
-    };
-    const exitPractice = () => { currentQ.value = null; isErrorRedo.value = false; };
-
-    onMounted(loadQuestions);
-    return { filter, allQuestions, practiceList, currentQ, qIndex, userAnswer, userAnswerMulti, showAnswer, isCorrect, knowledgePoints, bankList, uncategorizedCount, selectBank, answeredIds, errorList, TYPE_TXT, correctAnswerText, loadQuestions, startPractice, startErrorRedo, checkAnswer, prevQ, nextQ, exitPractice };
-  }
-};
-
-const MockExamPage = {
-  template: `
-  <div>
-    <h2 style="margin-bottom:16px">模拟考试</h2>
-    <el-card shadow="never" v-if="!started">
-      <template #header><span>考试设置</span></template>
-      <el-form :model="config" label-position="top">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="题目数量"><el-input-number v-model="config.count" :min="1" :max="50" /></el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="考试时长(分钟)"><el-input-number v-model="config.duration" :min="5" :max="180" /></el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="及格分(%)"><el-input-number v-model="config.passScore" :min="0" :max="100" /></el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label=" ">
-              <el-button type="primary" size="large" @click="startMock" :loading="loading" :disabled="!availableQuestions.length">开始模拟考试</el-button>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="题型筛选">
-          <el-checkbox-group v-model="config.types">
-            <el-checkbox value="single_choice">单选题</el-checkbox>
-            <el-checkbox value="multiple_choice">多选题</el-checkbox>
-            <el-checkbox value="true_false">判断题</el-checkbox>
-            <el-checkbox value="fill_blank">填空题</el-checkbox>
-            <el-checkbox value="short_answer">简答题</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-      </el-form>
-      <el-alert type="info" :closable="false" style="margin-top:8px">
-        当前题库可用题目：{{ availableQuestions.length }}题。模拟考试会从中随机抽取{{ config.count }}题，答完后自动评分并显示每题对错和解析。不记入正式考试记录。
-      </el-alert>
-    </el-card>
-
-    <div v-if="started && !finished">
-      <el-page-header @back="cancelMock" style="margin-bottom:16px">
-        <template #content><span>模拟考试 - 剩余 <span :style="{color: remaining<60?'red':'inherit'}">{{ formatTime(remaining) }}</span></span></template>
-      </el-page-header>
-      <el-progress :percentage="answeredCount/questions.length*100" :show-text="false" style="margin-bottom:16px" />
-      <div v-for="(q,i) in questions" :key="q.id" class="exam-question">
-        <div style="font-weight:bold;margin-bottom:12px">{{ i+1 }}. {{ q.content }} <el-tag size="small">{{ q.score }}分</el-tag> <el-tag size="small" type="info">{{ TYPE_TXT[q.question_type] }}</el-tag></div>
-        <div v-if="q.question_type==='single_choice'"><el-radio-group v-model="answers[q.id]"><el-radio v-for="opt in q.options" :key="opt.key" :value="opt.key" style="display:block;margin-bottom:8px">{{ opt.key }}. {{ opt.text }}</el-radio></el-radio-group></div>
-        <div v-else-if="q.question_type==='multiple_choice'"><el-checkbox-group v-model="multiAnswers[q.id]"><el-checkbox v-for="opt in q.options" :key="opt.key" :value="opt.key" style="display:block;margin-bottom:8px">{{ opt.key }}. {{ opt.text }}</el-checkbox></el-checkbox-group></div>
-        <div v-else-if="q.question_type==='true_false'"><el-radio-group v-model="answers[q.id]"><el-radio value="true">正确</el-radio><el-radio value="false">错误</el-radio></el-radio-group></div>
-        <div v-else><el-input v-model="answers[q.id]" type="textarea" :rows="3" placeholder="请输入答案" /></div>
-      </div>
-      <div style="text-align:center;margin-top:20px"><el-button type="primary" size="large" @click="submitMock">提交试卷</el-button></div>
-    </div>
-
-    <el-card shadow="never" v-if="finished">
-      <template #header>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span>模拟考试结果</span>
-          <el-button type="primary" @click="reset">再考一次</el-button>
-        </div>
-      </template>
-      <el-row :gutter="20" style="margin-bottom:20px">
-        <el-col :span="6"><div style="text-align:center;padding:16px"><div style="font-size:32px;font-weight:bold" :style="{color: passed?'#67c23a':'#f56c6c'}">{{ score }}/{{ maxScore }}</div><div style="color:#909399;margin-top:4px">得分</div></div></el-col>
-        <el-col :span="6"><div style="text-align:center;padding:16px"><div style="font-size:32px;font-weight:bold">{{ correctCount }}/{{ questions.length }}</div><div style="color:#909399;margin-top:4px">答对题数</div></div></el-col>
-        <el-col :span="6"><div style="text-align:center;padding:16px"><div style="font-size:32px;font-weight:bold">{{ percentage }}%</div><div style="color:#909399;margin-top:4px">得分率</div></div></el-col>
-        <el-col :span="6"><div style="text-align:center;padding:16px"><div style="font-size:32px;font-weight:bold" :style="{color: passed?'#67c23a':'#f56c6c'}">{{ passed?'通过':'未通过' }}</div><div style="color:#909399;margin-top:4px">结果</div></div></el-col>
-      </el-row>
-      <el-divider />详情回顾
-      <div v-for="(r,i) in results" :key="i" style="padding:16px;border:1px solid #ebeef5;border-radius:8px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-weight:bold">{{ i+1 }}. {{ r.content }}</span>
-          <el-tag :type="r.correct?'success':'danger'" size="small">{{ r.correct?'正确':'错误' }}</el-tag>
-        </div>
-        <div style="color:#606266;margin-bottom:4px">你的答案：{{ r.userAnswer || '(未作答)' }}</div>
-        <div style="color:#67c23a">正确答案：{{ r.correctAnswer }}</div>
-        <div v-if="r.explanation" style="color:#909399;margin-top:4px">解析：{{ r.explanation }}</div>
-      </div>
-    </el-card>
-  </div>`,
-  setup() {
-    const config = reactive({ count:10, duration:30, passScore:60, types:[] });
-    const allQuestions = ref([]); const availableQuestions = ref([]);
-    const started = ref(false); const finished = ref(false); const loading = ref(false);
-    const questions = ref([]); const answers = reactive({}); const multiAnswers = reactive({});
-    const remaining = ref(0); const results = ref([]);
-    const score = ref(0); const maxScore = ref(0); const correctCount = ref(0);
-    let timer = null;
-    const TYPE_TXT = { single_choice:"单选", multiple_choice:"多选", true_false:"判断", fill_blank:"填空", short_answer:"简答" };
-    const answeredCount = computed(() => {
-      return questions.value.filter(q => {
-        if (q.question_type === "multiple_choice") return (multiAnswers[q.id]||[]).length > 0;
-        return answers[q.id] !== undefined && answers[q.id] !== "";
-      }).length;
-    });
-    const percentage = computed(() => maxScore.value ? Math.round(score.value / maxScore.value * 100) : 0);
-    const passed = computed(() => percentage.value >= config.passScore);
-    const formatTime = (s) => { const m = Math.floor(s/60); const sec = s%60; return m+":"+String(sec).padStart(2,"0"); };
-
-    const loadQuestions = async () => {
-      try {
-        const r = await api.listQuestions({ page:1, page_size:100 });
-        allQuestions.value = r.items || [];
-        updateAvailable();
-      } catch(e) {}
-    };
-    const updateAvailable = () => {
-      let list = [...allQuestions.value];
-      if (config.types.length) list = list.filter(q => config.types.includes(q.question_type));
-      availableQuestions.value = list;
-    };
-    watch(() => config.types, updateAvailable, { deep: true });
-
-    const startMock = () => {
-      loading.value = true;
-      const pool = [...availableQuestions.value];
-      // Shuffle and pick
-      pool.sort(() => Math.random() - 0.5);
-      const picked = pool.slice(0, Math.min(config.count, pool.length));
-      if (!picked.length) { ElMessage.warning("没有可用题目"); loading.value = false; return; }
-      questions.value = picked;
-      picked.forEach(q => { answers[q.id] = ""; if (q.question_type === "multiple_choice") multiAnswers[q.id] = []; });
-      started.value = true; finished.value = false;
-      remaining.value = config.duration * 60;
-      timer = setInterval(() => { remaining.value--; if (remaining.value <= 0) { clearInterval(timer); submitMock(); } }, 1000);
-      loading.value = false;
-    };
-
-    const submitMock = () => {
-      if (timer) clearInterval(timer);
-      let totalScore = 0; let max = 0; let correct = 0;
-      const rs = [];
-      questions.value.forEach(q => {
-        max += q.score;
-        let userAns = "";
-        let isCorrect = false;
-        if (q.question_type === "multiple_choice") {
-          userAns = (multiAnswers[q.id]||[]).sort().join(",");
-          const correctArr = Array.isArray(q.correct_answer) ? q.correct_answer : [q.correct_answer];
-          const correctSorted = [...correctArr].sort().join(",");
-          isCorrect = userAns === correctSorted;
-        } else if (q.question_type === "fill_blank") {
-          userAns = answers[q.id] || "";
-          isCorrect = userAns.trim().toLowerCase() === String(q.correct_answer).trim().toLowerCase();
-        } else {
-          userAns = answers[q.id] || "";
-          isCorrect = String(userAns) === String(q.correct_answer);
-        }
-        if (isCorrect) { totalScore += q.score; correct++; }
-        rs.push({ content: q.content, userAnswer: userAns, correctAnswer: Array.isArray(q.correct_answer) ? q.correct_answer.join(",") : q.correct_answer, correct: isCorrect, explanation: q.explanation });
-      });
-      score.value = totalScore; maxScore.value = max; correctCount.value = correct; results.value = rs;
-      finished.value = true;
-    };
-
-    const cancelMock = () => { if (timer) clearInterval(timer); started.value = false; };
-    const reset = () => { started.value = false; finished.value = false; questions.value = []; results.value = []; };
-
-    onMounted(loadQuestions);
-    onUnmounted(() => { if (timer) clearInterval(timer); });
-    return { config, allQuestions, availableQuestions, started, finished, loading, questions, answers, multiAnswers, remaining, results, score, maxScore, correctCount, TYPE_TXT, answeredCount, percentage, passed, formatTime, startMock, submitMock, cancelMock, reset };
-  }
-};
-
-const ExamCreatePage = {
-  template: `
-  <div>
-    <el-page-header @back="navigate('exams')" style="margin-bottom:16px"><template #content><span style="font-size:18px;font-weight:bold">创建考试</span></template></el-page-header>
-    <el-form :model="form" label-position="top" style="margin-bottom:16px">
-      <el-row :gutter="20">
-        <el-col :span="6"><el-form-item label="考试名称"><el-input v-model="form.title" /></el-form-item></el-col>
-        <el-col :span="4"><el-form-item label="考试时长(分钟)"><el-input-number v-model="form.duration_minutes" :min="1" /></el-form-item></el-col>
-        <el-col :span="4"><el-form-item label="及格分(%)"><el-input-number v-model="form.pass_score" :min="0" :max="100" /></el-form-item></el-col>
-        <el-col :span="4"><el-form-item label="可考次数"><el-input-number v-model="form.max_attempts" :min="1" /></el-form-item></el-col>
-        <el-col :span="3"><el-form-item label="乱序出题"><el-switch v-model="form.shuffle_questions" /></el-form-item></el-col>
-        <el-col :span="3"><el-form-item label="打乱选项"><el-switch v-model="form.shuffle_options" /></el-form-item></el-col>
-      </el-row>
-      <el-form-item label="考试描述"><el-input v-model="form.description" type="textarea" :rows="2" style="max-width:800px" /></el-form-item>
-      <el-form-item label="组卷方式">
-        <el-radio-group v-model="form.question_mode">
-          <el-radio-button value="manual">手动选题</el-radio-button>
-          <el-radio-button value="random">随机抽题</el-radio-button>
-        </el-radio-group>
-        <span style="font-size:12px;color:#909399;margin-left:12px" v-if="form.question_mode==='manual'">从题库中手动挑选固定的题目</span>
-        <span style="font-size:12px;color:#909399;margin-left:12px" v-else>每次开考时从所选题库随机抽取题目，每次卷面不同</span>
-      </el-form-item>
-    </el-form>
-
-    <!-- 手动选题模式 -->
-    <el-row :gutter="20" v-if="form.question_mode==='manual'">
-      <el-col :span="12">
-        <el-card shadow="never" style="margin-bottom:16px">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>第一步：选择题库</span>
-              <span style="font-size:12px;color:#909399">可跨题库选题，点击左侧题目添加</span>
-            </div>
-          </template>
-          <div style="max-height:180px;overflow-y:auto">
-            <el-radio-group v-model="selectedBankId" style="display:flex;flex-direction:column;gap:4px" @change="onSelectBank">
-              <el-radio :value="'all'" style="margin-right:0">
-                <span>全部题库</span>
-                <span style="font-size:12px;color:#909399;margin-left:8px">({{ totalBankCount }}题)</span>
-              </el-radio>
-              <el-radio v-for="b in banks" :key="b.id" :value="b.id" style="margin-right:0">
-                <span>{{ b.name }}</span>
-                <span style="font-size:12px;color:#909399;margin-left:8px">({{ b.question_count||0 }}题)</span>
-              </el-radio>
-            </el-radio-group>
-            <el-empty v-if="banks.length===0" description="暂无题库" :image-size="40" />
-          </div>
-        </el-card>
-        <el-card shadow="never">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>第二步：选择题目</span>
-              <el-input v-model="searchKw" placeholder="搜索题目" size="small" style="width:200px" clearable />
-            </div>
-          </template>
-          <div style="max-height:300px;overflow-y:auto">
-            <div v-for="q in filteredQuestions" :key="q.id" style="padding:12px;border:1px solid #ebeef5;border-radius:8px;margin-bottom:8px">
-              <div style="display:flex;justify-content:space-between;align-items:start">
-                <div style="flex:1">
-                  <div style="font-weight:500;margin-bottom:4px">{{ q.content }}</div>
-                  <div>
-                    <el-tag size="small">{{ TYPE_TXT[q.question_type] }}</el-tag>
-                    <el-tag size="small" type="info" style="margin-left:4px">{{ q.score }}分</el-tag>
-                    <el-tag size="small" type="warning" style="margin-left:4px" v-if="q.knowledge_point">{{ q.knowledge_point }}</el-tag>
-                  </div>
-                </div>
-                <el-button size="small" type="primary" @click="addQuestion(q)" :disabled="selectedIds.has(q.id)">添加</el-button>
-              </div>
-            </div>
-            <el-empty v-if="filteredQuestions.length===0" :description="selectedBankId==='all'?'暂无题目':'该题库暂无题目'" />
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card shadow="never">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>已选题目 ({{ selectedQuestions.length }}题, 总{{ totalScore }}分)</span>
-              <el-button type="success" @click="doCreate" :disabled="!form.title||selectedQuestions.length===0" :loading="creating">创建考试</el-button>
-            </div>
-          </template>
-          <div style="max-height:500px;overflow-y:auto">
-            <div v-for="(q, i) in selectedQuestions" :key="q.id" style="padding:12px;border:1px solid #7c3aed;border-radius:8px;margin-bottom:8px;background:#f3edff">
-              <div style="display:flex;justify-content:space-between;align-items:start">
-                <div style="flex:1">
-                  <div style="font-weight:500;margin-bottom:4px">{{ i+1 }}. {{ q.content }}</div>
-                  <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-                    <el-tag size="small">{{ TYPE_TXT[q.question_type] }}</el-tag>
-                    <span style="font-size:13px;color:#606266">分值:</span>
-                    <el-input-number v-model="q.score" :min="0.5" :step="0.5" size="small" style="width:100px" />
-                    <el-button size="small" type="danger" text @click="removeQuestion(i)">移除</el-button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <el-empty v-if="selectedQuestions.length===0" description="请从左侧选择题目" />
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 随机抽题模式 -->
-    <el-row :gutter="20" v-else>
-      <el-col :span="12">
-        <el-card shadow="never">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>选择题库并设置抽取数量</span>
-              <span style="font-size:12px;color:#909399">可多选，每次开考时从各题库随机抽取</span>
-            </div>
-          </template>
-          <div style="max-height:460px;overflow-y:auto">
-            <div v-for="b in banks" :key="b.id" style="padding:12px;border:1px solid #ebeef5;border-radius:8px;margin-bottom:8px">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="flex:1">
-                  <div style="font-weight:500">{{ b.name }}</div>
-                  <div style="font-size:12px;color:#909399">共 {{ b.question_count||0 }} 题</div>
-                </div>
-                <el-input-number v-model="randomRules[b.id].count" :min="0" :max="(b.question_count||100)" size="small" style="width:120px" />
-                <el-tag v-if="randomRules[b.id].count>0" type="success" size="small" style="margin-left:8px">抽{{ randomRules[b.id].count }}题</el-tag>
-              </div>
-            </div>
-            <el-empty v-if="banks.length===0" description="暂无题库，请先创建题库" :image-size="60" />
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card shadow="never">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>抽题配置概要</span>
-              <el-button type="success" @click="doCreateRandom" :disabled="!form.title||selectedRuleCount===0" :loading="creating">创建考试</el-button>
-            </div>
-          </template>
-          <div>
-            <el-alert type="info" :closable="false" show-icon style="margin-bottom:12px" title="每次开考时会重新随机抽取题目，导致每次考试卷面不同。" />
-            <div v-if="selectedRules.length===0" style="color:#909399;text-align:center;padding:40px 0">请在左侧选择题库并设置抽取数量</div>
-            <div v-for="(r, i) in selectedRules" :key="r.bank.id" style="padding:10px 0;border-bottom:1px dashed #ebeef5;display:flex;justify-content:space-between;align-items:center">
-              <span>{{ i+1 }}. {{ r.bank.name }}</span>
-              <span>随机抽{{ r.count }}题</span>
-            </div>
-            <div style="padding:12px 0;font-weight:600" v-if="selectedRules.length>0">预计共抽 {{ selectedRuleCount }} 题</div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-  </div>`,
-  setup() {
-    const form = reactive({ title:"", description:"", duration_minutes:30, pass_score:60, max_attempts:10, shuffle_questions:false, shuffle_options:false, question_mode:"manual" });
-    const banks = ref([]); const selectedBankId = ref("all");
-    const allQuestions = ref([]); const bankQuestions = ref({}); const searchKw = ref("");
-    const selectedQuestions = ref([]); const creating = ref(false);
-    // random mode state: bankId -> {count, bank}
-    const randomRules = reactive({});
-    const TYPE_TXT = { single_choice:"单选", multiple_choice:"多选", true_false:"判断", fill_blank:"填空", short_answer:"简答" };
-    const selectedIds = computed(() => new Set(selectedQuestions.value.map(q => q.id)));
-    const currentQuestions = computed(() => {
-      if (selectedBankId.value === "all") return allQuestions.value;
-      return bankQuestions.value[selectedBankId.value] || [];
-    });
-    const filteredQuestions = computed(() => {
-      let list = currentQuestions.value;
-      if (searchKw.value) {
-        const kw = searchKw.value.toLowerCase();
-        list = list.filter(q => q.content.toLowerCase().includes(kw));
-      }
-      return list;
-    });
-    const totalBankCount = computed(() => allQuestions.value.length);
-    const totalScore = computed(() => selectedQuestions.value.reduce((s, q) => s + (q.score || 0), 0));
-    const selectedRules = computed(() => Object.values(randomRules).filter(r => r.count > 0));
-    const selectedRuleCount = computed(() => selectedRules.value.reduce((s, r) => s + (r.count||0), 0));
-    const loadBanks = async () => {
-      try {
-        banks.value = await api.listQuestionBanks() || [];
-        banks.value.forEach(b => { if (!randomRules[b.id]) randomRules[b.id] = { count: 0, bank: b }; else randomRules[b.id].bank = b; });
-      } catch(e) {}
-    };
-    const loadAllQuestions = async () => {
-      try { const r = await api.listQuestions({ page:1, page_size:500 }); allQuestions.value = (r.items||[]).map(q => ({ ...q })); } catch(e) {}
-    };
-    const loadBankQuestions = async (bankId) => {
-      if (bankQuestions.value[bankId]) return;
-      try {
-        const r = await api.listQuestions({ page:1, page_size:500, question_bank_id:bankId });
-        bankQuestions.value[bankId] = (r.items||[]).map(q => ({ ...q }));
-      } catch(e) {}
-    };
-    const onSelectBank = (val) => {
-      if (val !== "all" && !bankQuestions.value[val]) loadBankQuestions(val);
-    };
-    const addQuestion = (q) => { selectedQuestions.value.push({ ...q, score: q.score || 1 }); };
-    const removeQuestion = (i) => { selectedQuestions.value.splice(i, 1); };
-    const doCreate = async () => {
-      creating.value = true;
-      try {
-        await api.createExam({
-          title: form.title, description: form.description,
-          duration_minutes: form.duration_minutes, pass_score: form.pass_score,
-          max_attempts: form.max_attempts, shuffle_questions: form.shuffle_questions, shuffle_options: form.shuffle_options,
-          question_mode: "manual",
-          question_ids: selectedQuestions.value.map(q => q.id),
-        });
-        ElMessage.success("创建成功");
-        navigate("exams");
-      } catch(e) { ElMessage.error(e.message); }
-      creating.value = false;
-    };
-    const doCreateRandom = async () => {
-      const rules = selectedRules.value.map(r => ({ question_bank_id: r.bank.id, count: r.count }));
-      if (rules.length === 0) return ElMessage.warning("请选择题库并设置抽取数量");
-      creating.value = true;
-      try {
-        await api.createExam({
-          title: form.title, description: form.description,
-          duration_minutes: form.duration_minutes, pass_score: form.pass_score,
-          max_attempts: form.max_attempts, shuffle_questions: form.shuffle_questions, shuffle_options: form.shuffle_options,
-          question_mode: "random",
-          random_rules: rules,
-        });
-        ElMessage.success("创建成功");
-        navigate("exams");
-      } catch(e) { ElMessage.error(e.message); }
-      creating.value = false;
-    };
-    onMounted(() => { loadBanks(); loadAllQuestions(); });
-    return { form, banks, selectedBankId, allQuestions, searchKw, selectedQuestions, creating, TYPE_TXT, selectedIds, filteredQuestions, totalBankCount, totalScore, randomRules, selectedRules, selectedRuleCount, addQuestion, removeQuestion, doCreate, doCreateRandom, onSelectBank, navigate };
-  }
-};
-
-const ExamListPage = {
-  template: `
-  <div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h2>考试中心</h2>
-      <el-button type="primary" v-if="api.hasPerm('exam:create')" @click="navigate('exam-create')">创建考试</el-button>
-    </div>
-    <el-card shadow="never">
-      <el-table :data="exams" stripe>
-        <el-table-column prop="title" label="考试名称" min-width="200" />
-        <el-table-column prop="duration_minutes" label="时长(分)" width="100" />
-        <el-table-column prop="pass_score" label="及格分" width="80" />
-        <el-table-column prop="max_attempts" label="可考次数" width="100" />
-        <el-table-column label="操作" width="180">
-          <template #default="{row}">
-            <el-button size="small" type="primary" @click="navigate('exam/'+row.id)">开始考试</el-button>
-            <el-button size="small" @click="navigate('exam-result/'+row.id)">结果分析</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    <el-card shadow="never" style="margin-top:16px">
-      <template #header><span>我的考试记录</span></template>
-      <el-table :data="records" stripe size="small">
-        <el-table-column prop="exam_id" label="考试ID" min-width="120" />
-        <el-table-column prop="attempt_number" label="第几次" width="80" />
-        <el-table-column label="考试时间" width="170"><template #default="{row}"><span>{{ fmtDateTime(row.submitted_at) }}</span></template></el-table-column>
-        <el-table-column prop="total_score" label="得分" width="80" />
-        <el-table-column prop="max_score" label="满分" width="80" />
-        <el-table-column label="结果" width="80"><template #default="{row}"><el-tag :type="row.is_pass?'success':'danger'" size="small">{{ row.is_pass?'通过':'未过' }}</el-tag></template></el-table-column>
-        <el-table-column prop="status" label="状态" width="100" />
-        <el-table-column label="操作" width="80"><template #default="{row}"><el-button size="small" text @click="viewResult(row)">详情</el-button></template></el-table-column>
-      </el-table>
-    </el-card>
-    <el-dialog v-model="showCreate" title="创建考试" width="600px">
-      <el-form :model="form" label-position="top">
-        <el-form-item label="考试名称"><el-input v-model="form.title" /></el-form-item>
-        <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
-        <el-form-item label="考试时长(分钟)"><el-input-number v-model="form.duration_minutes" :min="1" /></el-form-item>
-        <el-form-item label="及格分"><el-input-number v-model="form.pass_score" :min="0" /></el-form-item>
-        <el-form-item label="最多考试次数"><el-input-number v-model="form.max_attempts" :min="1" /></el-form-item>
-        <el-form-item label="乱序出题"><el-switch v-model="form.shuffle_questions" /></el-form-item>
-        <el-form-item label="打乱选项"><el-switch v-model="form.shuffle_options" /></el-form-item>
-        <el-form-item label="选择题目">
-          <el-select v-model="form.question_ids" multiple filterable style="width:100%">
-            <el-option v-for="q in allQuestions" :key="q.id" :label="q.content.substring(0,40)" :value="q.id" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer><el-button @click="showCreate=false">取消</el-button><el-button type="primary" @click="doCreate">创建</el-button></template>
-    </el-dialog>
-    <el-dialog v-model="showResult" title="考试结果详情" width="720px">
-      <div style="margin-bottom:12px;font-size:13px;color:#606266" v-if="resultRecord">
-        <span>考试时间：{{ fmtDateTime(resultRecord.submitted_at) }}</span>
-        <span style="margin-left:16px">得分：{{ resultRecord.total_score }} / {{ resultRecord.max_score }}</span>
-        <el-tag :type="resultRecord.is_pass?'success':'danger'" size="small" style="margin-left:8px">{{ resultRecord.is_pass?'通过':'未过' }}</el-tag>
-      </div>
-      <div v-for="(a,i) in resultAnswers" :key="i" style="padding:12px;border:1px solid #ebeef5;border-radius:8px;margin-bottom:8px">
-        <div style="font-weight:bold">{{ i+1 }}. {{ a.question_content || ('试题 ' + a.question_id) }}</div>
-        <div v-if="a.options && a.options.length" style="margin-top:4px;font-size:13px;color:#606266">
-          <div v-for="opt in a.options" :key="opt.key">{{ opt.key }}. {{ opt.text }}</div>
-        </div>
-        <div style="margin-top:6px">你的答案：<span :style="{color: a.is_correct?'#67c23a':'#f56c6c'}">{{ formatAnswer(a.answer) || '(未作答)' }}</span></div>
-        <div>正确答案：<span style="color:#67c23a">{{ formatAnswer(a.correct_answer) }}</span></div>
-        <div style="margin-top:4px">得分：{{ a.score }} <el-tag :type="a.is_correct?'success':'danger'" size="small">{{ a.is_correct?'正确':'错误' }}</el-tag></div>
-        <div v-if="a.explanation" style="color:#909399;margin-top:4px">解析：{{ a.explanation }}</div>
-        <div v-if="a.grader_comment" style="color:#909399;margin-top:4px">批语：{{ a.grader_comment }}</div>
-      </div>
-    </el-dialog>
-  </div>`,
-  setup() {
-    const exams = ref([]); const records = ref([]); const showCreate = ref(false); const showResult = ref(false);
-    const allQuestions = ref([]); const resultAnswers = ref([]);
-    const form = reactive({ title:"", description:"", duration_minutes:30, pass_score:60, max_attempts:10, shuffle_questions:false, shuffle_options:false, question_ids:[] });
-    const load = async () => { try { const [e,r] = await Promise.all([api.listExams({page:1,page_size:20}), api.getMyExamRecords()]); exams.value=e.items||[]; records.value=r||[]; } catch(e) { ElMessage.error(e.message); } };
-    const loadQuestions = async () => { try { const r = await api.listQuestions({page:1,page_size:100}); allQuestions.value=r.items||[]; } catch(e) {} };
-    const doCreate = async () => {
-      if (!form.title) return ElMessage.warning("请输入考试名称");
-      if (!form.question_ids.length) return ElMessage.warning("请选择题目");
-      try { await api.createQuestion; await api.createExam(form); ElMessage.success("创建成功"); showCreate.value=false; form.title=""; form.question_ids=[]; load(); } catch(e) { ElMessage.error(e.message); }
-    };
-    const resultRecord = ref(null);
-    const formatAnswer = (a) => {
-      if (a === null || a === undefined) return "";
-      if (Array.isArray(a)) return a.join(", ");
-      if (typeof a === "object") return JSON.stringify(a);
-      return String(a);
-    };
-    const viewResult = async (row) => { try { const r = await api.getExamRecord(row.id); resultAnswers.value = r.answers||[]; resultRecord.value = r; showResult.value=true; } catch(e) { ElMessage.error(e.message); } };
-    onMounted(() => { load(); loadQuestions(); });
-    return { exams, records, showCreate, showResult, allQuestions, resultAnswers, resultRecord, formatAnswer, form, load, doCreate, viewResult, navigate };
-  }
-};
-
-// ===== Wrong Question Collection (错题集) =====
-const WrongQuestionPage = {
-  template: `
-  <div>
-    <el-row :gutter="20">
-      <el-col :span="6">
-        <el-card shadow="never">
-          <template #header><span>题库分类</span></template>
-          <div style="max-height:600px;overflow-y:auto">
-            <div @click="selectBank(null)"
-              :style="{padding:'12px',borderRadius:'8px',marginBottom:'8px',cursor:'pointer',
-              background: selectedBankId===null?'#f3edff':'#fff',
-              border: selectedBankId===null?'1px solid #7c3aed':'1px solid #ebeef5'}">
-              <div style="font-weight:500;margin-bottom:4px">全部错题</div>
-              <div style="font-size:13px;color:#909399">{{ allWrongQuestions.length }} 题</div>
-            </div>
-            <div v-for="b in bankList" :key="b.id" @click="selectBank(b.id)"
-              :style="{padding:'12px',borderRadius:'8px',marginBottom:'8px',cursor:'pointer',
-              background: selectedBankId===b.id?'#f3edff':'#fff',
-              border: selectedBankId===b.id?'1px solid #7c3aed':'1px solid #ebeef5'}">
-              <div style="font-weight:500;margin-bottom:4px">{{ b.name }}</div>
-              <div style="font-size:13px;color:#909399">{{ b.wrong_count }} 题</div>
-            </div>
-            <div v-if="uncategorizedCount>0" @click="selectBank('__uncategorized__')"
-              :style="{padding:'12px',borderRadius:'8px',marginBottom:'8px',cursor:'pointer',
-              background: selectedBankId==='__uncategorized__'?'#f3edff':'#fff',
-              border: selectedBankId==='__uncategorized__'?'1px solid #7c3aed':'1px solid #ebeef5'}">
-              <div style="font-weight:500;margin-bottom:4px">未分类</div>
-              <div style="font-size:13px;color:#909399">{{ uncategorizedCount }} 题</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="18">
-        <el-card shadow="never">
-          <template #header><span>{{ currentTitle }}</span></template>
-          <div style="margin-bottom:12px;font-size:13px;color:#909399">汇总你在历次考试中答错的题目，共 {{ wrongQuestions.length }} 道。</div>
-          <el-empty v-if="!wrongQuestions.length" description="暂无错题" />
-          <div v-for="(q,i) in wrongQuestions" :key="q.question_id" style="padding:14px;border:1px solid #ebeef5;border-radius:8px;margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:bold;flex:1">{{ i+1 }}. {{ q.question_content }}</div>
-              <el-tag type="danger" size="small">错 {{ q.wrong_count }} 次</el-tag>
-            </div>
-            <div v-if="q.options && q.options.length" style="margin-top:6px;font-size:13px;color:#606266">
-              <div v-for="opt in q.options" :key="opt.key">{{ opt.key }}. {{ opt.text }}</div>
-            </div>
-            <div style="margin-top:8px">我的答案：<span style="color:#f56c6c">{{ formatAnswer(q.my_answer) || '(未作答)' }}</span></div>
-            <div>正确答案：<span style="color:#67c23a">{{ formatAnswer(q.correct_answer) }}</span></div>
-            <div v-if="q.explanation" style="color:#909399;margin-top:4px">解析：{{ q.explanation }}</div>
-            <div style="color:#909399;margin-top:6px;font-size:12px">来源：{{ q.exam_title || q.exam_id }}（{{ fmtDateTime(q.exam_time) }}）</div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-  </div>`,
-  setup() {
-    const allWrongQuestions = ref([]);
-    const wrongQuestions = ref([]);
-    const selectedBankId = ref(null);
-    const bankList = ref([]);
-
-    const formatAnswer = (a) => {
-      if (a === null || a === undefined) return "";
-      if (Array.isArray(a)) return a.join(", ");
-      if (typeof a === "object") return JSON.stringify(a);
-      return String(a);
-    };
-
-    const uncategorizedCount = computed(() => allWrongQuestions.value.filter(q => !q.question_bank_id).length);
-
-    const currentTitle = computed(() => {
-      if (selectedBankId.value === null) return "全部错题";
-      if (selectedBankId.value === "__uncategorized__") return "未分类错题";
-      const b = bankList.value.find(x => x.id === selectedBankId.value);
-      return b ? (b.name + " 错题") : "错题集";
-    });
-
-    // Compute per-bank wrong question counts, only including banks that actually have wrong questions.
-    const buildBankList = () => {
-      const counts = {};
-      for (const q of allWrongQuestions.value) {
-        if (!q.question_bank_id) continue;
-        counts[q.question_bank_id] = (counts[q.question_bank_id] || 0) + 1;
-      }
-      bankList.value = Object.keys(counts).map(id => ({
-        id,
-        name: allWrongQuestions.value.find(x => x.question_bank_id === id).question_bank_name || "未分类",
-        wrong_count: counts[id],
-      }));
-    };
-
-    const filterByBank = () => {
-      if (selectedBankId.value === null) {
-        wrongQuestions.value = allWrongQuestions.value;
-      } else if (selectedBankId.value === "__uncategorized__") {
-        wrongQuestions.value = allWrongQuestions.value.filter(q => !q.question_bank_id);
-      } else {
-        wrongQuestions.value = allWrongQuestions.value.filter(q => q.question_bank_id === selectedBankId.value);
-      }
-    };
-
-    const selectBank = (id) => {
-      selectedBankId.value = id;
-      filterByBank();
-    };
-
-    const load = async () => {
-      try {
-        allWrongQuestions.value = await api.getWrongQuestions();
-        buildBankList();
-        filterByBank();
-      } catch(e) { ElMessage.error(e.message); }
-    };
-    onMounted(load);
-    return { wrongQuestions, allWrongQuestions, bankList, selectedBankId, currentTitle, uncategorizedCount, formatAnswer, selectBank };
-  }
-};
-
-// ===== Exam Take with Timer =====
 const ExamTakePage = {
   props: ["id"],
   template: `
@@ -1663,41 +710,6 @@ const ExamTakePage = {
 };
 
 // ===== Exam Result Analysis =====
-const ExamResultPage = {
-  props: ["id"],
-  template: `
-  <div>
-    <el-page-header @back="navigate('exams')" style="margin-bottom:16px"><template #content><span>考试结果分析</span></template></el-page-header>
-    <el-row :gutter="20" style="margin-bottom:20px">
-      <el-col :span="6"><el-card class="stat-card" shadow="hover"><div class="num">{{ analysis.total_records }}</div><div class="label">考试人数</div></el-card></el-col>
-      <el-col :span="6"><el-card class="stat-card" shadow="hover"><div class="num">{{ analysis.average_score }}</div><div class="label">平均分</div></el-card></el-col>
-      <el-col :span="6"><el-card class="stat-card" shadow="hover"><div class="num">{{ analysis.pass_rate }}%</div><div class="label">通过率</div></el-card></el-col>
-      <el-col :span="6"><el-card class="stat-card" shadow="hover"><div class="num">{{ Object.keys(analysis.question_error_rates||{}).length }}</div><div class="label">题目数</div></el-card></el-col>
-    </el-row>
-    <el-card shadow="never">
-      <template #header><span>成绩分布</span></template>
-      <div v-for="(v,k) in analysis.score_distribution" :key="k" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-        <span style="width:60px">{{ k }}</span>
-        <el-progress :percentage="analysis.total_records?v/analysis.total_records*100:0" :show-text="false" style="flex:1" />
-        <span style="width:40px">{{ v }}人</span>
-      </div>
-    </el-card>
-    <el-card shadow="never" style="margin-top:16px">
-      <template #header><span>题目错误率</span></template>
-      <div v-for="(rate,qid) in analysis.question_error_rates" :key="qid" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-        <span style="width:120px;overflow:hidden;text-overflow:ellipsis">{{ qid.substring(0,8) }}...</span>
-        <el-progress :percentage="Math.round(rate*100)" :color="rate>0.5?'#f56c6c':rate>0.3?'#e6a23c':'#67c23a'" :show-text="false" style="flex:1" />
-        <span style="width:50px">{{ Math.round(rate*100) }}%</span>
-      </div>
-    </el-card>
-  </div>`,
-  setup(props) {
-    const analysis = ref({});
-    onMounted(async () => { try { analysis.value = await api.getExamAnalysis(props.id); } catch(e) { ElMessage.error(e.message); } });
-    return { analysis, navigate };
-  }
-};
-
 const UserManagePage = {
   template: `<div><h2>用户管理与教师审核</h2><div style="display:flex;gap:12px;margin:16px 0">
     <el-input v-model="keyword" placeholder="搜索姓名或用户名" @keyup.enter="search" style="width:240px" />
@@ -1839,7 +851,7 @@ const MediaPage = {
       if (!selectedCat.value) return ElMessage.warning("\u8bf7\u5148\u9009\u62e9\u5206\u7c7b");
       uploading.value = true; uploadPercent.value = 0; uploadPhase.value = "upload";
       try {
-        // 两段式进度: 传输阶段映射 0~85%, 后端处理(转存OSS等)阶段停在 85%, 完成才到 100%
+        // 两段式进度: 传输阶段映射 0~85%, 后端处理阶段停在 85%, 完成才到 100%
         await api.uploadMedia(req.file, { category_id: selectedCat.value.id }, (p) => {
           if (p >= 100) { uploadPhase.value = "save"; uploadPercent.value = 85; }
           else { uploadPercent.value = Math.round(p * 0.85); }

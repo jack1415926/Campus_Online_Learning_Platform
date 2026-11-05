@@ -1,12 +1,11 @@
-"""Learning management service (LM-01 through LM-09)."""
+"""Learning management service."""
 
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.course import Chapter, Course, CourseStatus
-from app.models.exam import Exam, ExamRecord
 from app.models.learning import AssignmentType, CompletionStatus, CourseAssignment, LearningRecord
 from app.models.notification import Notification, NotificationType
 from app.models.role import Role, UserRole
@@ -87,7 +86,7 @@ class LearningRecordService:
         if db.scalar(select(Notification.id).where(Notification.event_key == event_key)):
             return
 
-        # Notify the learner.
+        # Notify the student.
         notification = NotificationService.notify_user(
             db, user_id, NotificationType.course_reminder,
             "课程已完成",
@@ -103,12 +102,12 @@ class LearningRecordService:
             .join(Role, Role.id == UserRole.role_id)
             .where(Role.code == "admin")
         ).scalars().all()
-        learner = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
-        learner_name = learner.full_name if learner else user_id
+        student = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+        student_name = student.full_name if student else user_id
         NotificationService.notify_users(
             db, list(admin_user_ids), NotificationType.course_reminder,
             "学员完成课程",
-            f"学员 {learner_name} 已完成课程《{course_title}》。",
+            f"学员 {student_name} 已完成课程《{course_title}》。",
             extra_data={"course_id": course_id, "user_id": user_id},
         )
 
@@ -135,70 +134,13 @@ class LearningRecordService:
         else:
             overall = 0.0
 
-        course = db.execute(select(Course).where(Course.id == course_id)).scalar_one_or_none()
-        # Required exams for completion (from course completion_config)
-        exam_links = []
-        if course and course.completion_config:
-            exam_links = course.completion_config.get("exams") or []
-
-        # Determine exam status for each linked exam
-        exams_status = []
-        chapters_done = completed == total_chapters and total_chapters > 0
-        if exam_links:
-            for link in exam_links:
-                exam_id = link.get("exam_id")
-                exam = db.execute(select(Exam).where(Exam.id == exam_id)).scalar_one_or_none()
-                if not exam:
-                    continue
-                passed = db.execute(
-                    select(func.count()).select_from(
-                        select(ExamRecord).where(
-                            ExamRecord.user_id == user_id,
-                            ExamRecord.exam_id == exam_id,
-                            ExamRecord.is_pass == True,  # noqa: E712
-                        ).subquery()
-                    )
-                ).scalar() or 0
-                attempts = db.execute(
-                    select(func.count()).select_from(
-                        select(ExamRecord).where(
-                            ExamRecord.user_id == user_id,
-                            ExamRecord.exam_id == exam_id,
-                        ).subquery()
-                    )
-                ).scalar() or 0
-                max_attempts = link.get("max_attempts") or exam.max_attempts or 10
-                exams_status.append({
-                    "exam_id": str(exam.id),
-                    "title": exam.title,
-                    "passed": passed > 0,
-                    "attempts": attempts,
-                    "max_attempts": max_attempts,
-                    "remaining": max(0, max_attempts - attempts),
-                })
-            all_exams_passed = all(e["passed"] for e in exams_status)
-        else:
-            all_exams_passed = True
-
-        # Learning completion is separate from exam results and certificate eligibility.
-        exam_required = bool(exam_links)
-        can_take_exam = chapters_done
-        is_complete = chapters_done
-
-        if is_complete:
-            status = CompletionStatus.completed
-        elif chapters_done:
-            # Chapters finished but exams not all passed yet -> still in progress
-            status = CompletionStatus.in_progress
-        else:
-            status = CompletionStatus.in_progress if records else CompletionStatus.not_started
+        is_complete = completed == total_chapters and total_chapters > 0
+        status = CompletionStatus.completed if is_complete else (CompletionStatus.in_progress if records else CompletionStatus.not_started)
 
         return {
             "course_id": course_id, "total_chapters": total_chapters,
             "completed_chapters": completed, "overall_percent": round(overall, 1),
             "total_learning_seconds": total_seconds, "status": status, "is_complete": is_complete,
-            "exam_required": exam_required, "can_take_exam": can_take_exam,
-            "all_exams_passed": all_exams_passed, "exams": exams_status,
         }
 
     @staticmethod
@@ -216,30 +158,3 @@ class LearningRecordService:
                 Chapter.course_id == course_id,
             ).order_by(LearningRecord.last_accessed_at.desc())
         ).scalars().first()
-
-    @staticmethod
-    def reset_progress(db: Session, user_id: str, course_id: str):
-        """Reset learning progress so the user can re-learn.
-
-        Deletes chapter learning records and resets exam attempts for the
-        course's required exams, so the user must re-study and re-take the
-        exams. Previous exam records are removed (kept only as-is when the
-        learner re-attempts after re-learning).
-        """
-        db.execute(
-            delete(LearningRecord).where(
-                LearningRecord.user_id == user_id, LearningRecord.course_id == course_id,
-            )
-        )
-        # Reset exam attempts for required exams linked to this course
-        course = db.execute(select(Course).where(Course.id == course_id)).scalar_one_or_none()
-        exam_ids = []
-        if course and course.completion_config:
-            exam_ids = [link.get("exam_id") for link in (course.completion_config.get("exams") or []) if link.get("exam_id")]
-        if exam_ids:
-            db.execute(
-                delete(ExamRecord).where(
-                    ExamRecord.user_id == user_id, ExamRecord.exam_id.in_(exam_ids)
-                )
-            )
-        db.flush()

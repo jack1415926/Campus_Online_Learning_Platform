@@ -1,4 +1,4 @@
-"""Notification API (NTF-01 through NTF-04)."""
+"""Notification API."""
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ from app.services.notification_service import NotificationService
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-# --- User notifications (NTF-01) ---
+# --- User notifications ---
 
 @router.get("", response_model=PageResponse[NotificationResponse])
 def list_notifications(unread_only: bool = Query(False), page: int = Query(1, ge=1),

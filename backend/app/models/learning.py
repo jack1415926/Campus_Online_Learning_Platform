@@ -39,7 +39,7 @@ class CourseAssignment(Base, UUIDPrimaryKey, TimestampMixin):
 
 
 class LearningRecord(Base, UUIDPrimaryKey, TimestampMixin):
-    """Per-chapter learning progress tracking (LM-04, LM-05)."""
+    """Per-chapter learning progress tracking."""
 
     __tablename__ = "learning_records"
     __table_args__ = (UniqueConstraint("user_id", "course_id", "chapter_id", name="uq_learning_user_chapter"),)
@@ -52,7 +52,7 @@ class LearningRecord(Base, UUIDPrimaryKey, TimestampMixin):
     # Progress tracking
     learning_seconds: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     progress_percent: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    # LM-05: resume position
+    # : resume position
     resume_position: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # e.g. {"video_time": 120, "page": 3}
     status: Mapped[CompletionStatus] = mapped_column(
@@ -62,5 +62,3 @@ class LearningRecord(Base, UUIDPrimaryKey, TimestampMixin):
     started_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
     completed_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
     last_accessed_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    # LM-07 partial: minimum watch time validation
-    min_watch_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)

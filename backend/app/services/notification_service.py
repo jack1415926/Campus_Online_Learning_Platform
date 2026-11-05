@@ -1,4 +1,4 @@
-"""Notification service (NTF-01 through NTF-04)."""
+"""Notification service."""
 
 from datetime import datetime, timezone
 

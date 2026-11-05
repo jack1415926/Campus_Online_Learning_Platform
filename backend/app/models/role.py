@@ -1,22 +1,10 @@
-"""RBAC models: Role, Permission, UserRole with data-scope dimension.
+"""Student, teacher, administrator roles and permission assignments."""
 
-Permission = Role (what operations) x DataScope (whose data).
-Five builtin roles align with URS Section 3.
-"""
 
-import enum
-
-from sqlalchemy import CHAR, Column, Enum, ForeignKey, String, Table, Text, Boolean
+from sqlalchemy import CHAR, Column, ForeignKey, String, Table, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKey
-
-
-class DataScope(str, enum.Enum):
-    """Controls which data rows a role assignment can access."""
-    self = "self"
-    department = "department"
-    company = "company"
 
 
 # Many-to-many: Role <-> Permission
@@ -44,7 +32,7 @@ class Permission(Base, UUIDPrimaryKey, TimestampMixin):
 
 
 class Role(Base, UUIDPrimaryKey, TimestampMixin):
-    """A role bundles a set of permissions. Five builtin roles are seeded."""
+    """A role bundles a set of permissions. Three builtin roles are seeded."""
 
     __tablename__ = "roles"
 
@@ -62,7 +50,7 @@ class Role(Base, UUIDPrimaryKey, TimestampMixin):
 
 
 class UserRole(Base, UUIDPrimaryKey, TimestampMixin):
-    """Associates a user with a role and a data-scope boundary."""
+    """Associates a user with a campus role."""
 
     __tablename__ = "user_roles"
 
@@ -71,10 +59,6 @@ class UserRole(Base, UUIDPrimaryKey, TimestampMixin):
     )
     role_id: Mapped[str] = mapped_column(
         CHAR(36), ForeignKey("roles.id", ondelete="CASCADE"), index=True
-    )
-    data_scope: Mapped[DataScope] = mapped_column(
-        Enum(DataScope, name="data_scope"),
-        default=DataScope.self,
     )
 
     user: Mapped["User"] = relationship("User", back_populates="role_assignments")

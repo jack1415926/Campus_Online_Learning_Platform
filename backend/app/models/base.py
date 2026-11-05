@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import CHAR, DateTime, String, func
+from sqlalchemy import CHAR, DateTime, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 

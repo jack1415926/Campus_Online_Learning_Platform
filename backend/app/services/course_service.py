@@ -1,21 +1,11 @@
-"""Course management service (CM-01 through CM-07)."""
+"""Course management service."""
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import selectinload
 
-from app.models.category import Tag
 from app.models.course import Chapter, Course, CourseStatus
-from app.models.exam import Exam
-from app.models.media import MediaAsset
-from app.schemas.course import (
-    ChapterCreate,
-    CourseCreate,
-    CourseListFilter,
-    CourseUpdate,
-    PublishAction,
-)
-from app.schemas.category import TagResponse
+from app.schemas.course import CourseCreate, CourseListFilter, CourseUpdate
 
 
 class CourseService:
@@ -52,7 +42,6 @@ class CourseService:
             stmt.offset((page - 1) * page_size)
             .limit(page_size)
             .order_by(Course.created_at.desc())
-            .options(selectinload(Course.tags))
         )
         result = db.execute(stmt)
         return list(result.scalars().all()), total
@@ -62,7 +51,7 @@ class CourseService:
         result = db.execute(
             select(Course)
             .where(Course.id == course_id)
-            .options(selectinload(Course.tags), selectinload(Course.chapters))
+            .options(selectinload(Course.chapters))
         )
         return result.scalar_one_or_none()
 
@@ -80,21 +69,9 @@ class CourseService:
             instructor=body.instructor,
             status=CourseStatus.draft,
             created_by=creator_id,
-            completion_config=body.completion_config,
         )
         db.add(course)
         db.flush()
-
-        if body.completion_config:
-            CourseService._apply_exam_links(db, str(course.id), body.completion_config)
-
-        # Attach tags
-        if body.tag_ids:
-            tags_result = db.execute(
-                select(Tag).where(Tag.id.in_(body.tag_ids))
-            )
-            for t in tags_result.scalars().all():
-                course.tags.append(t)
 
         # Create chapters
         for ch in body.chapters:
@@ -107,68 +84,20 @@ class CourseService:
                 sort_order=ch.sort_order,
                 is_required=ch.is_required,
                 estimated_minutes=ch.estimated_minutes,
-                unlock_condition=ch.unlock_condition,
             )
             db.add(chapter)
-
-        if body.completion_config is not None:
-            course.completion_config = body.completion_config
-            CourseService._apply_exam_links(db, str(course.id), body.completion_config)
 
         db.flush()
         return course
 
-    @staticmethod
-    def _apply_exam_links(
-        db: Session, course_id: str, completion_config: dict | None
-    ):
-        """Associate exams with a course and set their per-exam max_attempts.
-
-        completion_config format:
-            {"exam_mode": "all", "exams": [{"exam_id": "...", "max_attempts": 10}, ...]}
-        """
-        if not completion_config:
-            return
-        exam_links = completion_config.get("exams") or []
-        linked_ids = []
-        for link in exam_links:
-            exam_id = link.get("exam_id")
-            if not exam_id:
-                continue
-            linked_ids.append(str(exam_id))
-            exam = db.execute(select(Exam).where(Exam.id == exam_id)).scalar_one_or_none()
-            if exam:
-                exam.course_id = course_id
-                attempts = link.get("max_attempts")
-                if attempts:
-                    exam.max_attempts = int(attempts)
-        # Detach exams no longer linked to this course
-        if linked_ids:
-            stale = db.execute(
-                select(Exam).where(Exam.course_id == course_id, ~Exam.id.in_(linked_ids))
-            ).scalars().all()
-        else:
-            stale = db.execute(select(Exam).where(Exam.course_id == course_id)).scalars().all()
-        for exam in stale:
-            exam.course_id = None
-        db.flush()
 
     @staticmethod
     def update_course(
         db: Session, course: Course, body: CourseUpdate
     ) -> Course:
-        data = body.model_dump(exclude_unset=True, exclude={"tag_ids"})
+        data = body.model_dump(exclude_unset=True)
         for k, v in data.items():
             setattr(course, k, v)
-
-        if body.tag_ids is not None:
-            course.tags.clear()
-            db.flush()
-            tags_result = db.execute(
-                select(Tag).where(Tag.id.in_(body.tag_ids))
-            )
-            for t in tags_result.scalars().all():
-                course.tags.append(t)
 
         db.flush()
         return course
@@ -177,7 +106,7 @@ class CourseService:
     def publish_action(
         db: Session, course: Course, action: str
     ) -> Course:
-        """Handle publish workflow transitions (CM-04).
+        """Handle publish workflow transitions.
 
         draft -> pending_review -> published -> archived
         """

@@ -1,4 +1,4 @@
-"""Learning management API (LM-01 through LM-09)."""
+"""Learning management API."""
 
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -25,15 +25,15 @@ router = APIRouter(prefix="/learning", tags=["learning"], dependencies=[Depends(
 
 @router.get("/my-assignments", response_model=list[CourseAssignmentResponse])
 def get_my_assignments(requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Get courses assigned to the current user (LM-03)."""
+    """Get courses assigned to the current user."""
     return AssignmentService.get_user_assignments(db, requester)
 
 
-# --- Learning Records & Progress (LM-04, LM-05, LM-06, LM-07, LM-08) ---
+# --- Learning Records & Progress ---
 
 @router.post("/progress", response_model=LearningRecordResponse)
 def update_progress(body: ProgressUpdateRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """LM-04, LM-05: update learning progress. Works for both PC and mobile (LM-06)."""
+    """update learning progress. Works for both PC and mobile."""
     db.scalar(select(Course).where(Course.id == body.course_id).with_for_update().execution_options(populate_existing=True))
     course = access.get_course(db, requester, body.course_id, learn=True)
     if "student" not in access.roles_for(db, requester) or course.status != CourseStatus.published:
@@ -48,7 +48,7 @@ def update_progress(body: ProgressUpdateRequest, requester: User = Depends(get_c
 
 @router.get("/progress/{course_id}", response_model=CourseProgressResponse)
 def get_course_progress(course_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """LM-04, LM-08: get aggregated course progress."""
+    """get aggregated course progress."""
     access.get_course(db, requester, course_id, learn=True)
     return LearningRecordService.get_course_progress(db, requester.id, course_id)
 
@@ -82,20 +82,7 @@ def course_students(course_id: str, page: int = Query(1, ge=1), page_size: int =
 
 @router.get("/resume/{course_id}", response_model=LearningRecordResponse | None)
 def get_resume_position(course_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """LM-05: get last learning position for resume."""
+    """get last learning position for resume."""
     access.get_course(db, requester, course_id, learn=True)
     record = LearningRecordService.get_resume_position(db, requester.id, course_id)
     return record
-
-
-@router.post("/reset/{course_id}", status_code=200)
-def reset_course_progress(course_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Reset all learning records for a course, allowing re-learning."""
-    access.require_admin(db, requester)
-    from app.models.certificate import Certificate
-    db.scalar(select(Course).where(Course.id == course_id).with_for_update())
-    if db.scalar(select(Certificate.id).where(Certificate.course_id == course_id, Certificate.user_id == requester.id)):
-        raise HTTPException(409, "已领取证书，不能重置学习记录")
-    LearningRecordService.reset_progress(db, requester.id, course_id)
-    db.commit()
-    return {"message": "Progress reset"}

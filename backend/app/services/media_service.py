@@ -1,6 +1,6 @@
-"""Media asset library service (DM-01)."""
+"""Media asset library service."""
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.media import MediaAsset, MediaType

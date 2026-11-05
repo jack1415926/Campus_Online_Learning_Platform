@@ -1,4 +1,4 @@
-"""User management API endpoints (UM-03, UM-04, UM-05)."""
+"""User management API endpoints."""
 
 from datetime import datetime, timezone
 from typing import Literal
@@ -12,7 +12,6 @@ from app.api.deps import get_current_user
 from app.core.permissions import Perm
 from app.core.rbac import require_permission
 from app.database import get_db
-from app.models.role import DataScope
 from app.models.role import UserRole
 from app.models.session import Session as LoginSession, SessionStatus
 from app.core.security import hash_password, verify_password
@@ -50,7 +49,7 @@ class StatusUpdate(BaseModel):
 
 def _set_campus_role(db, user, role_code, reviewer):
     db.execute(delete(UserRole).where(UserRole.user_id == user.id))
-    assign_role(db, user, role_code, DataScope.company if role_code == "admin" else DataScope.self)
+    assign_role(db, user, role_code)
     user.requested_role = role_code
     user.teacher_review_status = "approved" if role_code == "teacher" else None
     user.teacher_review_reason = None
@@ -80,14 +79,14 @@ def _user_response_with_roles(db: Session, user: User) -> UserResponse:
     return resp
 
 
-# --- Personal Center (UM-05) ---
+# --- Personal Center ---
 
 @router.get("/me/profile", response_model=UserResponse)
 def get_my_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get the current user's full profile (UM-05 personal center)."""
+    """Get the current user's full profile."""
     return _user_response_with_roles(db, current_user)
 
 
@@ -119,7 +118,7 @@ def change_password(body: ChangePasswordRequest, current_user: User = Depends(ge
     db.commit()
 
 
-# --- User CRUD (UM-03) ---
+# --- User CRUD ---
 
 @router.get("", response_model=PageResponse[UserResponse])
 def list_users(
@@ -131,7 +130,7 @@ def list_users(
     requester: User = Depends(require_permission(Perm.USER_READ)),
     db: Session = Depends(get_db),
 ):
-    """List users with optional grouping filters (UM-04 user grouping)."""
+    """List users with optional grouping filters."""
     filt = UserGroupFilter(
         status=user_status,
         keyword=keyword,
@@ -168,7 +167,7 @@ def create_user(
     requester: User = Depends(require_permission(Perm.USER_CREATE)),
     db: Session = Depends(get_db),
 ):
-    """Create a new user manually (UM-03)."""
+    """Create a new user manually."""
     try:
         user = UserService.create_user(db, body)
     except ValueError as e:
@@ -204,7 +203,7 @@ def deactivate_user(
     requester: User = Depends(require_permission(Perm.USER_DELETE)),
     db: Session = Depends(get_db),
 ):
-    """Deactivate a user (soft delete, UM-03 绂昏亴鍋滅敤)."""
+    """Deactivate a user (soft delete, UM-03 停用账号)."""
     if str(requester.id) == user_id:
         raise HTTPException(400, "不能停用自己的管理员账号")
     user = UserService.get_user(db, user_id)
@@ -219,7 +218,6 @@ def deactivate_user(
 
 class RoleAssignBody(BaseModel):
     role_code: Literal["student", "teacher", "admin"]
-    data_scope: DataScope = DataScope.self
 
 
 @router.post("/{user_id}/roles", response_model=UserResponse)
@@ -229,7 +227,7 @@ def assign_role_to_user(
     requester: User = Depends(require_permission(Perm.USER_UPDATE)),
     db: Session = Depends(get_db),
 ):
-    """Assign a role with data scope to a user."""
+    """Assign a campus role to a user."""
     user = UserService.get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

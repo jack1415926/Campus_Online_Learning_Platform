@@ -32,7 +32,7 @@ test('ISSUE-01: DOCX passes the actual upload hook and file picker', () => {
   const env = load();
   assert.equal(env.run("MediaPage.setup().checkUpload({name:'lesson.DOCX'})"), true);
   assert.match(env.run('MediaPage.template'), /:accept="[^"\n]*\.docx/);
-  assert.equal(env.run("MediaPage.setup().checkUpload({name:'legacy.doc'})"), false);
+  assert.equal(env.run("MediaPage.setup().checkUpload({name:'unsupported.doc'})"), false);
 });
 
 test('ISSUE-02: new chapters load video; refresh and type changes use the current type', async () => {

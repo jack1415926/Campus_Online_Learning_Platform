@@ -1,7 +1,7 @@
 """Permission code constants and builtin role definitions.
 
 Permission codes follow the pattern: module:action
-(e.g. 'user:create', 'course:delete', 'report:export')
+(e.g. 'user:create', 'course:delete')
 """
 
 
@@ -23,21 +23,15 @@ class Perm:
 
     # Learning management
     LEARNING_READ = "learning:read"
-    LEARNING_ASSIGN = "learning:assign"
-    LEARNING_MANAGE = "learning:manage"
 
     # Exam
     EXAM_READ = "exam:read"
     EXAM_CREATE = "exam:create"
     EXAM_GRADE = "exam:grade"
 
-    # Reports
-    REPORT_READ = "report:read"
-    REPORT_EXPORT = "report:export"
 
     # System
     SYSTEM_CONFIG = "system:config"
-    SYSTEM_AUDIT = "system:audit"
 
 
 class RoleCode:

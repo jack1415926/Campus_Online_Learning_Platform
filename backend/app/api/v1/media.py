@@ -1,4 +1,4 @@
-"""Media asset library API (DM-01)."""
+"""Media asset library API."""
 
 import traceback
 import uuid
@@ -29,13 +29,12 @@ from app.schemas.media import (
 )
 from app.services import storage_service
 from app.services.media_service import MediaCategoryService, MediaService
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 router = APIRouter(prefix="/media", tags=["media"])
 
 MIME_MAP = {
     "video/": MediaType.video,
-    "audio/": MediaType.audio,
     "image/": MediaType.image,
     "application/pdf": MediaType.document,
     "application/vnd.ms-powerpoint": MediaType.document,
@@ -50,7 +49,6 @@ def detect_media_type(mime: str) -> MediaType:
         if mime.startswith(prefix):
             return mtype
     return MediaType.document
-
 
 
 # --- Media Categories ---
@@ -132,11 +130,7 @@ def get_media_url(
     requester: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """返回素材的实时可访问 URL。
-
-    - 本地存储: 返回 /storage/{key}
-    - OSS 存储: 返回带签名的临时 URL(有效期由配置控制)
-    """
+    """返回受当前登录会话保护的短期素材链接。"""
     asset = MediaService.get_asset(db, asset_id)
     if not asset:
         raise HTTPException(404, "Media asset not found")
@@ -210,7 +204,7 @@ async def upload_media(
         if ext:
             storage_key += f".{ext}"
 
-        # 流式上传到配置的存储后端(本地文件系统或 OSS)，避免大文件一次性载入内存
+        # 分块写入本地文件，避免大文件一次性载入内存
         file_size = 0
         try:
             file_size = file.size or 0
@@ -226,13 +220,7 @@ async def upload_media(
                 file_size = 0
         storage_service.upload_fileobj(storage_key, file.file, mime)
 
-        # 生成可访问 URL 标识：
-        #  - 本地: /storage/{key}
-        #  - OSS:  oss://{key} (稳定标识，实际访问走 /media/{id}/url 签名接口)
-        if storage_service.is_oss():
-            file_url = f"oss://{storage_key}"
-        else:
-            file_url = f"/storage/{storage_key}"
+        file_url = f"/storage/{storage_key}"
 
         asset = MediaService.create_asset(
             db,
@@ -290,7 +278,7 @@ def delete_media(
     access.require_asset_owner(db, requester, asset)
     if db.scalar(select(Chapter.id).where(Chapter.content_ref_id == asset_id).limit(1)) or db.scalar(select(Course.id).where(Course.cover_image_url == asset.file_url).limit(1)):
         raise HTTPException(409, "资料已被课程引用，不能删除")
-    # 从存储后端删除对象(本地文件 或 OSS)
+    # 删除对应的本地素材文件
     storage_service.delete(asset.storage_key)
     MediaService.delete_asset(db, asset)
     db.commit()

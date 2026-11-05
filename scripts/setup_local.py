@@ -146,7 +146,6 @@ def configure_application(state):
             "APP_NAME=校园在线学习平台\nDEBUG=false\n"
             f"DATABASE_URL=mysql+pymysql://{APP_USER}:{quote(state['app_password'], safe='')}@127.0.0.1:{PORT}/{DATABASE}?charset=utf8mb4\n"
             f"SECRET_KEY={secrets.token_urlsafe(48)}\n"
-            "STORAGE_BACKEND=local\n"
             'CORS_ORIGINS=["http://127.0.0.1:20081","http://localhost:20081"]\n',
             encoding="utf-8",
         )
@@ -166,24 +165,24 @@ def configure_application(state):
     from app.auth.local import LocalAuthProvider
     from app.core.seed import assign_role, seed_rbac
     from app.database import SessionLocal
-    from app.models.role import DataScope
     from app.models.user import User
     from sqlalchemy import select
 
     credentials_file = RUNTIME / "admin.json"
     with SessionLocal() as db:
         seed_rbac(db)
-        user = db.execute(select(User).where(User.username == "campus_admin")).scalar_one_or_none()
+        credentials = json.loads(credentials_file.read_text(encoding="utf-8")) if credentials_file.exists() else {"username": "admin", "password": "123456"}
+        username = credentials["username"]
+        user = db.execute(select(User).where(User.username == username)).scalar_one_or_none()
         if user is None:
-            password = secrets.token_urlsafe(18)
             user = LocalAuthProvider().register(
-                db, username="campus_admin", email="campus_admin@example.com",
-                password=password, full_name="校园平台管理员",
+                db, username=username, email="admin@example.test",
+                password=credentials["password"], full_name="校园平台管理员",
             ).user
-            assign_role(db, user, "admin", DataScope.company)
+            assign_role(db, user, "admin")
             user.requested_role = "admin"
             db.commit()
-            write_json(credentials_file, {"username": "campus_admin", "password": password})
+            write_json(credentials_file, credentials)
         else:
             db.commit()
     print("Migrations and initial application administrator ready. Login details: .runtime/admin.json")

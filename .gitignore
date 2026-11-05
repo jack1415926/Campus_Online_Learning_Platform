@@ -1,6 +1,3 @@
-# Reference project: local reuse source only, never publish this directory.
-/nov_lms/
-
 # Credentials and local configuration
 .env
 .env.*

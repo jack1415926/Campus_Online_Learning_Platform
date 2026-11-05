@@ -1,4 +1,4 @@
-"""Schemas for media assets (DM-01)."""
+"""Schemas for media assets."""
 
 from datetime import datetime
 

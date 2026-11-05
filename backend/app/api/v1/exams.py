@@ -1,10 +1,9 @@
-"""Exam API (EX-01 through EX-07)."""
+"""Exam API."""
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -18,9 +17,9 @@ from app.services import campus_exam_service as campus
 from app.models.user import User
 from app.schemas.common import PageMeta, PageResponse
 from app.schemas.exam import (
-    ExamCreate, ExamRecordResponse, ExamResponse, ExamResultAnalysis,
+    ExamCreate, ExamRecordResponse, ExamResponse,
     GradeExamRequest, QuestionBankCreate, QuestionBankResponse, QuestionBankUpdate,
-    QuestionCreate, QuestionImportItem, QuestionResponse,
+    QuestionCreate, QuestionResponse,
     SubmitExamRequest,
 )
 from app.services.exam_service import ExamService, QuestionBankService, QuestionService
@@ -34,7 +33,7 @@ def _check_perm(db: Session, user: User, *perms: str):
         raise HTTPException(403, f"Requires: {', '.join(perms)}")
 
 
-# --- Questions (EX-01, EX-02) ---
+# --- Questions ---
 
 @router.get("/questions", response_model=PageResponse[QuestionResponse])
 def list_questions(question_type: str | None = Query(None), knowledge_point: str | None = Query(None),
@@ -68,15 +67,6 @@ def update_question(q_id: str, body: QuestionCreate, requester: User = Depends(g
     return q
 
 
-@router.post("/questions/batch", response_model=list[QuestionResponse], status_code=201)
-def batch_import_questions(items: list[QuestionImportItem], requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    access.require_admin(db, requester)
-    _check_perm(db, requester, Perm.EXAM_CREATE)
-    qs = QuestionService.batch_import(db, items, requester.id)
-    db.commit()
-    return qs
-
-
 @router.delete("/questions/{q_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_question(q_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _check_perm(db, requester, Perm.EXAM_CREATE)
@@ -85,7 +75,7 @@ def delete_question(q_id: str, requester: User = Depends(get_current_user), db: 
     if not q:
         raise HTTPException(404, "Question not found")
     campus.owner(db, requester, q)
-    if any(q_id in (ids or []) for ids in db.scalars(select(Exam.question_ids).where(Exam.question_mode == "manual"))):
+    if any(q_id in (ids or []) for ids in db.scalars(select(Exam.question_ids))):
         raise HTTPException(409, "题目已被试卷引用，请保留题目或先修改草稿试卷")
     QuestionService.delete_question(db, q)
     db.commit()
@@ -138,55 +128,7 @@ def delete_question_bank(bank_id: str, requester: User = Depends(get_current_use
     db.commit()
 
 
-@router.post("/question-banks/{bank_id}/import")
-async def import_questions(bank_id: str, file: UploadFile = File(...),
-                           requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    access.require_admin(db, requester)
-    _check_perm(db, requester, Perm.EXAM_CREATE)
-    bank = QuestionBankService.get_bank(db, bank_id)
-    if not bank:
-        raise HTTPException(404, "Question bank not found")
-    if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(400, "Only .xlsx files are supported")
-    file_bytes = await file.read()
-    try:
-        created, errors, skipped = QuestionBankService.import_excel(db, bank_id, file_bytes, requester.id)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    db.commit()
-    return {"imported": len(created), "errors": errors, "skipped": skipped}
-
-
-@router.get("/question-banks/template")
-def download_template(requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    access.require_admin(db, requester)
-    import io
-    from openpyxl import Workbook
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "题目导入"
-    headers = ["题型", "题干", "选项A", "选项B", "选项C",
-               "选项D", "选项E", "正确答案", "分值", "难度", "知识点", "解析"]
-    ws.append(headers)
-    ws.append(["单选", "2+2等于多少？", "3", "4", "5", "6", None, "B", 2, 1, "基础数学", "选B"])
-    ws.append(["多选", "以下哪些是质数？", "2", "4", "3", "6", None, "A,C", 3, 2, "数论", "2和3是质数"])
-    ws.append(["判断", "地球是圆的。", None, None, None, None, None, "正确", 1, 1, "常识", None])
-    ws.append(["填空", "中国首都是___。", None, None, None, None, None, "北京", 1, 1, "地理", None])
-    ws.append(["简答", "简述HTTP协议。", None, None, None, None, None, "HTTP是超文本传输协议", 5, 3, "网络", None])
-    for col_idx, width in enumerate([8, 30, 12, 12, 12, 12, 12, 15, 8, 8, 12, 20], 1):
-        ws.column_dimensions[chr(64 + col_idx)].width = width
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
-    wb.close()
-    return StreamingResponse(
-        buf,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=question_import_template.xlsx"}
-    )
-
-# --- Exams (EX-03, EX-04, EX-05) ---
+# --- Exams ---
 
 def _exam_response(exam):
     response = ExamResponse.model_validate(exam)
@@ -209,18 +151,6 @@ def list_exams(course_id: str | None = Query(None), page: int = Query(1, ge=1), 
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
     exams = db.scalars(stmt.order_by(Exam.created_at, Exam.id).offset((page-1)*page_size).limit(page_size)).all()
     return PageResponse(items=[_exam_response(e) for e in exams], meta=PageMeta(page=page, page_size=page_size, total=total))
-
-
-@router.get("/wrong-questions")
-def get_wrong_questions(
-    exam_id: str | None = Query(None),
-    question_bank_id: str | None = Query(None),
-    requester: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Return the user's wrong questions across exam attempts (错题集)."""
-    access.require_admin(db, requester)
-    return ExamService.get_wrong_questions(db, requester.id, exam_id, question_bank_id)
 
 
 @router.get("/{exam_id}", response_model=ExamResponse)
@@ -258,7 +188,7 @@ def delete_exam(exam_id: str, requester: User = Depends(get_current_user), db: S
     db.commit()
 
 
-# --- Take exam (EX-03) ---
+# --- Take exam ---
 
 @router.post("/{exam_id}/start")
 def start_exam(exam_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -270,7 +200,7 @@ def start_exam(exam_id: str, requester: User = Depends(get_current_user), db: Se
 
 @router.post("/records/{record_id}/submit", response_model=ExamRecordResponse)
 def submit_exam(record_id: str, body: SubmitExamRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Submit exam answers for auto-grading (EX-06)."""
+    """Submit exam answers for auto-grading."""
     record, exam, course = campus.load_record(db, requester, record_id)
     if str(record.user_id) != str(requester.id) or "student" not in access.roles_for(db, requester):
         raise HTTPException(403, "只能提交本人答卷")
@@ -297,7 +227,7 @@ def save_draft(record_id: str, body: SubmitExamRequest, requester: User = Depend
 
 @router.post("/records/{record_id}/grade", response_model=ExamRecordResponse)
 def manual_grade(record_id: str, body: GradeExamRequest, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Manual grade subjective questions (EX-06)."""
+    """Manual grade subjective questions."""
     _check_perm(db, requester, Perm.EXAM_GRADE)
     record, _, _ = campus.load_record(db, requester, record_id, grade=True)
     campus.grade(db, record, body, requester.id)
@@ -305,7 +235,7 @@ def manual_grade(record_id: str, body: GradeExamRequest, requester: User = Depen
     return campus.view(record, manager=True)
 
 
-# --- Records & Analysis (EX-07) ---
+# --- Records & Analysis ---
 
 @router.get("/records/my", response_model=list[ExamRecordResponse])
 def get_my_records(exam_id: str | None = Query(None), requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -341,10 +271,3 @@ def exam_records(exam_id: str, page: int = Query(1, ge=1), page_size: int = Quer
         items.append(response)
     db.commit()
     return {"items": items, "meta": {"total": total, "page": page, "page_size": page_size}}
-
-
-@router.get("/{exam_id}/analysis", response_model=ExamResultAnalysis)
-def get_exam_analysis(exam_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """EX-07: exam result analysis."""
-    access.require_admin(db, requester)
-    return ExamService.get_exam_analysis(db, exam_id)

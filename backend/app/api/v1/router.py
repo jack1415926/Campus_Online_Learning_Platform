@@ -7,14 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.api.deps import get_current_user
-from app.core.permissions import Perm
-from app.core.rbac import require_permission
-from app.core.campus_access import require_admin, roles_for
+from app.core.campus_access import require_admin
 
 from app.api.v1.auth import router as auth_router
-from app.api.v1.sso import router as sso_router
 from app.api.v1.users import router as users_router
-from app.api.v1.categories import router as categories_router, tag_router
+from app.api.v1.categories import router as categories_router
 from app.api.v1.media import router as media_router
 from app.api.v1.courses import router as courses_router
 from app.api.v1.certificates import router as certificates_router
@@ -26,7 +23,6 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.exams import router as exams_router
 
 api_router = APIRouter()
-admin_only = [Depends(require_permission(Perm.SYSTEM_CONFIG))]
 
 
 def taxonomy_access(request: Request, user=Depends(get_current_user), db=Depends(get_db)):
@@ -35,10 +31,8 @@ def taxonomy_access(request: Request, user=Depends(get_current_user), db=Depends
 
 
 api_router.include_router(auth_router)
-api_router.include_router(sso_router, dependencies=admin_only)
 api_router.include_router(users_router)
 api_router.include_router(categories_router, dependencies=[Depends(taxonomy_access)])
-api_router.include_router(tag_router, dependencies=[Depends(taxonomy_access)])
 api_router.include_router(media_router)
 api_router.include_router(courses_router)
 api_router.include_router(certificates_router)

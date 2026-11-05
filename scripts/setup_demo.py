@@ -2,7 +2,6 @@
 import json
 import os
 from pathlib import Path
-import secrets
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -42,14 +41,14 @@ def main():
             print("Demo data already exists; no accounts, passwords or learning results were reset.")
             print("Login details: .runtime/demo.json")
             return
-        usernames = {"admin": "campus_demo_admin", "teacher": "campus_demo_teacher", "student": "campus_demo_student1", "student2": "campus_demo_student2"}
+        usernames = {"admin": "admin2", "teacher": "teacher", "student": "stu1", "student2": "stu2"}
         if db.scalar(select(User.id).where(User.username.in_(usernames.values())).limit(1)):
             raise RuntimeError("Reserved demo usernames already exist without a manifest; no existing users were changed.")
         current = datetime.now(timezone.utc)
         accounts, users = {}, {}
         for key, username in usernames.items():
             role = "student" if key.startswith("student") else key
-            password = secrets.token_urlsafe(18)
+            password = "123456"
             name = {"admin": "演示管理员", "teacher": "陈老师", "student": "林同学", "student2": "周同学"}[key]
             user = User(username=username, email=username + "@example.test", full_name=name, password_hash=hash_password(password), requested_role=role)
             db.add(user)

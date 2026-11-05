@@ -8,12 +8,12 @@ from app.models.homework import Homework, HomeworkSubmission
 from app.models.user import User, UserStatus
 from app.models.session import Session, SessionStatus
 from app.models.role import (
-    DataScope, Permission, Role, UserRole, role_permissions,
+    Permission, Role, UserRole, role_permissions,
 )
-from app.models.category import Category, Tag
+from app.models.category import Category
 from app.models.media import MediaAsset, MediaType
 from app.models.course import (
-    Chapter, ContentType, Course, CourseStatus, Difficulty, course_tags,
+    Chapter, ContentType, Course, CourseStatus, Difficulty,
 )
 from app.models.learning import (
     AssignmentType, CompletionStatus, CourseAssignment,
@@ -22,10 +22,10 @@ from app.models.learning import (
 
 __all__ = [
     "Base", "User", "UserStatus",
-    "DataScope", "Permission", "Role", "UserRole", "role_permissions",
+    "Permission", "Role", "UserRole", "role_permissions",
     "Session", "SessionStatus",
-    "Category", "Tag", "MediaAsset", "MediaType",
-    "Chapter", "ContentType", "Course", "CourseStatus", "Difficulty", "course_tags",
+    "Category", "MediaAsset", "MediaType",
+    "Chapter", "ContentType", "Course", "CourseStatus", "Difficulty",
     "AssignmentType", "CompletionStatus", "CourseAssignment",
     "LearningRecord",
 

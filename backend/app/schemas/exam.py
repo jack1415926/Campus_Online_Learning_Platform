@@ -1,8 +1,7 @@
-"""Schemas for exams (EX-01 through EX-07)."""
+"""Schemas for exams."""
 
 from datetime import datetime
 import math
-from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
@@ -28,7 +27,7 @@ class QuestionCreate(QuestionBase):
 
     @model_validator(mode="after")
     def valid_question(self):
-        if not self.content.strip() or self.question_type == QuestionType.fill_blank:
+        if not self.content.strip():
             raise ValueError("请填写题干，只支持单选、多选、判断和简答")
         if self.question_type in (QuestionType.single_choice, QuestionType.multiple_choice):
             options = self.options or []
@@ -61,36 +60,14 @@ class QuestionResponse(QuestionBase):
     model_config = {"from_attributes": True}
 
 
-class QuestionImportItem(BaseModel):
-    """Single question for batch import (EX-02)."""
-    question_type: QuestionType
-    content: str
-    options: list | None = None
-    correct_answer: str | list | None = None
-    difficulty: int = 1
-    knowledge_point: str | None = None
-    score: float = 1.0
-
-
-class RandomRule(BaseModel):
-    """Random question rule: pick `count` questions from a bank."""
-    question_bank_id: str
-    count: int = Field(5, ge=1)
-
-
 class ExamBase(BaseModel):
     title: str = Field(..., max_length=255)
     description: str | None = None
     course_id: str | None = None
-    question_ids: list | dict | None = None
-    question_mode: str = "manual"  # "manual" | "random"
-    random_rules: list[RandomRule] | None = None
+    question_ids: list[str] | None = None
     duration_minutes: int = 60
     pass_score: float = 60.0
     max_attempts: int = 10
-    shuffle_questions: bool = False
-    shuffle_options: bool = False
-    screen_lock: bool = False
     start_time: str | None = None
     end_time: str | None = None
     grading_notes: str | None = None
@@ -102,7 +79,6 @@ class ExamCreate(ExamBase):
     course_id: str
     question_ids: list[str] = Field(min_length=1, max_length=100)
     question_scores: dict[str, float] = {}
-    question_mode: Literal["manual"] = "manual"
     start_time: AwareDatetime
     end_time: AwareDatetime
     duration_minutes: int = Field(default=60, ge=1, le=300)
@@ -116,8 +92,6 @@ class ExamCreate(ExamBase):
             raise ValueError("标题不能为空，结束时间须晚于开始时间")
         if len(set(self.question_ids)) != len(self.question_ids):
             raise ValueError("试卷题目不能重复")
-        if self.shuffle_options or self.shuffle_questions or self.screen_lock or self.random_rules:
-            raise ValueError("本期仅支持普通手动组卷")
         if any(q not in self.question_ids or not math.isfinite(s) or not 0 < s <= 10000 for q,s in self.question_scores.items()):
             raise ValueError("题目分值须大于0且属于试卷")
         return self
@@ -139,14 +113,14 @@ class SubmitAnswerItem(BaseModel):
 
 
 class SubmitExamRequest(BaseModel):
-    """Submit exam answers for grading (EX-06)."""
+    """Submit exam answers for grading."""
     model_config = {"extra": "forbid"}
     answers: list[SubmitAnswerItem] = Field(default_factory=list, max_length=100)
     time_spent_seconds: int | None = None
 
 
 class GradeAnswerItem(BaseModel):
-    """Manual grading for subjective questions (EX-06)."""
+    """Manual grading for subjective questions."""
     question_id: str
     model_config = {"extra": "forbid"}
     score: float = Field(ge=0, allow_inf_nan=False)
@@ -174,14 +148,6 @@ class ExamRecordResponse(BaseModel):
     created_at: datetime
     model_config = {"from_attributes": True}
 
-
-class ExamResultAnalysis(BaseModel):
-    """EX-07: exam result analysis."""
-    total_records: int = 0
-    average_score: float = 0.0
-    pass_rate: float = 0.0
-    score_distribution: dict = {}  # {"0-60": 5, "60-80": 10, ...}
-    question_error_rates: dict = {}  # {"question_id": 0.35, ...}
 
 # --- Question Bank (question bank categories) ---
 

@@ -14,7 +14,7 @@ class LocalAuthProvider(AuthenticationProvider):
         return "local"
 
     def register(self, db: Session, *, username: str, email: str, password: str,
-                 full_name: str, employee_id: str | None = None, phone: str | None = None) -> AuthResult:
+                 full_name: str, phone: str | None = None) -> AuthResult:
         existing = db.execute(
             select(User).where((User.username == username) | (User.email == email))
         ).scalars().first()
@@ -22,7 +22,7 @@ class LocalAuthProvider(AuthenticationProvider):
             raise AuthError("Username or email already registered", 409)
         user = User(
             username=username, email=email, password_hash=hash_password(password),
-            full_name=full_name, employee_id=employee_id, phone=phone,
+            full_name=full_name, phone=phone,
             status=UserStatus.active,
         )
         db.add(user)

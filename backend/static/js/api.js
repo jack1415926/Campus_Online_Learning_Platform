@@ -12,7 +12,6 @@ const api = {
   hasRole(role) { return (this._user?.roles || []).includes(role); },
   setPerms(perms) { this._perms = perms || []; },
   hasPerm(perm) { if (!this._perms) return false; if (this._perms.includes("system:config")) return true; return this._perms.includes(perm); },
-  hasAnyPerm(...perms) { if (!this._perms) return false; if (this._perms.includes("system:config")) return true; return perms.some(p => this._perms.includes(p)); },
   isLoggedIn() { return !!this.getToken(); },
   async request(method, path, data = null, isForm = false) {
     const headers = {};
@@ -88,17 +87,12 @@ const api = {
   listUsers(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/users" + q); },
   createUser(body) { return this.request("POST", "/users", body); },
   updateUser(id, body) { return this.request("PUT", "/users/" + id, body); },
-  deleteUser(id) { return this.request("DELETE", "/users/" + id); },
   assignRole(userId, body) { return this.request("POST", "/users/" + userId + "/roles", body); },
   // Categories
   listCategories() { return this.request("GET", "/categories"); },
   createCategory(body) { return this.request("POST", "/categories", body); },
-  updateCategory(id, body) { return this.request("PUT", "/categories/" + id, body); },
   deleteCategory(id) { return this.request("DELETE", "/categories/" + id); },
   // Tags
-  listTags() { return this.request("GET", "/tags"); },
-  createTag(body) { return this.request("POST", "/tags", body); },
-  deleteTag(id) { return this.request("DELETE", "/tags/" + id); },
   // Media
   listMedia(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/media" + q); },
   getMedia(id) { return this.request("GET", "/media/" + id); },
@@ -149,7 +143,6 @@ const api = {
   getMyAssignments() { return this.request("GET", "/learning/my-assignments"); },
   updateProgress(body) { return this.request("POST", "/learning/progress", body); },
   getCourseProgress(courseId) { return this.request("GET", "/learning/progress/" + courseId); },
-  resetCourseProgress(courseId) { return this.request("POST", "/learning/reset/" + courseId); },
   getMyRecords(courseId) { return this.request("GET", "/learning/records" + (courseId ? "?course_id=" + encodeURIComponent(courseId) : "")); },
   listHomeworks(courseId, page=1) { return this.request("GET", `/courses/${courseId}/homeworks?page=${page}`); },
   saveHomework(courseId, id, body) { return this.request(id ? "PUT" : "POST", `/courses/${courseId}/homeworks`+(id?`/${id}`:""), body); },
@@ -173,22 +166,14 @@ const api = {
   listQuestions(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/exams/questions" + q); },
   createQuestion(body) { return this.request("POST", "/exams/questions", body); },
   updateQuestion(id, body) { return this.request("PUT", "/exams/questions/"+id, body); },
-  batchImportQuestions(items) { return this.request("POST", "/exams/questions/batch", items); },
   deleteQuestion(id) { return this.request("DELETE", "/exams/questions/" + id); },
   // Question Banks
   listQuestionBanks() { return this.request("GET", "/exams/question-banks"); },
   createQuestionBank(body) { return this.request("POST", "/exams/question-banks", body); },
   updateQuestionBank(id, body) { return this.request("PUT", "/exams/question-banks/" + id, body); },
   deleteQuestionBank(id) { return this.request("DELETE", "/exams/question-banks/" + id); },
-  importQuestions(bankId, file) {
-    const formData = new FormData();
-    formData.append("file", file);
-    return this.request("POST", "/exams/question-banks/" + bankId + "/import", formData, true);
-  },
-  getQuestionBankTemplateUrl() { return this.baseUrl + "/exams/question-banks/template"; },
   listExams(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/exams" + q); },
   getExam(id) { return this.request("GET", "/exams/" + id); },
-  createExam(body) { return this.request("POST", "/exams", body); },
   saveExam(id, body) { return this.request(id?"PUT":"POST", "/exams"+(id?"/"+id:""), body); },
   examRecords(id, page=1) { return this.request("GET", `/exams/${id}/records?page=${page}`); },
   saveExamDraft(id, body) { return this.request("PUT", `/exams/records/${id}/draft`, body); },
@@ -197,14 +182,6 @@ const api = {
   submitExam(recordId, body) { return this.request("POST", "/exams/records/" + recordId + "/submit", body); },
   getExamRecord(id) { return this.request("GET", "/exams/records/" + id); },
   getMyExamRecords(examId) { return this.request("GET", "/exams/records/my"+(examId?"?exam_id="+encodeURIComponent(examId):"")); },
-  getWrongQuestions(params) {
-    if (!params) return this.request("GET", "/exams/wrong-questions");
-    const q = new URLSearchParams();
-    if (params.exam_id) q.set("exam_id", params.exam_id);
-    if (params.question_bank_id) q.set("question_bank_id", params.question_bank_id);
-    return this.request("GET", "/exams/wrong-questions?" + q.toString());
-  },
   gradeExam(recordId, body) { return this.request("POST", "/exams/records/" + recordId + "/grade", body); },
-  getExamAnalysis(examId) { return this.request("GET", "/exams/" + examId + "/analysis"); },
 
 };

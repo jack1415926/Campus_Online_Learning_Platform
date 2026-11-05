@@ -5,7 +5,6 @@ from sqlalchemy import select
 
 from app.models.course import Course, CourseStatus, Chapter
 from app.models.learning import CourseAssignment, AssignmentType
-from app.models.media import MediaAsset
 from app.models.role import Role, UserRole
 
 

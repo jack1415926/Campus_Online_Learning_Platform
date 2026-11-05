@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 from app.config import settings
 from app.database import SessionLocal, engine
 from app.models.course import Course
+from app.models.learning import LearningRecord
 
 
 def main():
@@ -39,15 +40,18 @@ def main():
     # Verify transaction persistence and JSON round-trip in a fresh ORM session.
     check_id = str(uuid.uuid4())
     check_title = "环境持久化检查_" + check_id
-    payload = {"stage": 2, "text": "中文持久化", "chapters": [1, 2]}
+    payload = {"video_time": 12.5}
     try:
         with SessionLocal() as db:
-            db.add(Course(id=check_id, title=check_title, description="temporary environment check", completion_config=payload))
+            db.add(Course(id=check_id, title=check_title, description="temporary environment check"))
+            db.flush()
+            db.add(LearningRecord(user_id=check_id, course_id=check_id, resume_position=payload))
             db.commit()
         with SessionLocal() as db:
             course = db.execute(select(Course).where(Course.id == check_id)).scalar_one()
             assert course.title == check_title
-            assert course.completion_config == payload
+            record = db.scalar(select(LearningRecord).where(LearningRecord.course_id == check_id))
+            assert record.resume_position == payload
     finally:
         with SessionLocal() as db:
             course = db.get(Course, check_id)
@@ -68,7 +72,7 @@ def main():
         response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer " + token})
         assert response.status_code == 200, response.status_code
         profile = response.json()
-        assert profile["username"] == "campus_admin"
+        assert profile["username"] == credentials["username"]
         assert "admin" in profile["roles"]
         assert client.get("/api/v1/auth/me").status_code == 401
         assert client.get("/api/v1/not-an-api").status_code == 404

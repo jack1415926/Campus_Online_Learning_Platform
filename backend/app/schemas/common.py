@@ -1,6 +1,5 @@
 """Shared schema utilities: pagination and generic responses."""
 
-import uuid
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel

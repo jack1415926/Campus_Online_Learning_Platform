@@ -1,10 +1,9 @@
-"""Category and tag management service (CM-06)."""
+"""Course category management service."""
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import selectinload
 
-from app.models.category import Category, Tag
+from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 
 
@@ -49,29 +48,4 @@ class CategoryService:
     @staticmethod
     def delete(db: Session, cat: Category) -> None:
         db.delete(cat)
-        db.flush()
-
-
-class TagService:
-
-    @staticmethod
-    def list_all(db: Session) -> list[Tag]:
-        result = db.execute(select(Tag).order_by(Tag.name))
-        return list(result.scalars().all())
-
-    @staticmethod
-    def create(db: Session, name: str) -> Tag:
-        existing = (
-            db.execute(select(Tag).where(Tag.name == name))
-        ).scalar_one_or_none()
-        if existing:
-            return existing
-        tag = Tag(name=name)
-        db.add(tag)
-        db.flush()
-        return tag
-
-    @staticmethod
-    def delete(db: Session, tag: Tag) -> None:
-        db.delete(tag)
         db.flush()

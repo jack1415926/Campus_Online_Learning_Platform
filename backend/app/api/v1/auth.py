@@ -1,8 +1,7 @@
 """Authentication endpoints: register, login, refresh, me."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Header, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from jose import JWTError
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 

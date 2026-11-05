@@ -56,7 +56,7 @@ def write_exam(db, user, body, exam=None):
     paper = []
     for question_id in body.question_ids:
         q = owner(db, user, db.get(Question, question_id))
-        # Existing legacy questions must satisfy the same four-type validation.
+        # Validate every selected question before freezing the paper.
         try:
             QuestionCreate.model_validate({k: getattr(q, k) for k in QuestionCreate.model_fields})
         except ValueError:
@@ -70,7 +70,6 @@ def write_exam(db, user, body, exam=None):
     exam.start_time = body.start_time.astimezone(timezone.utc).isoformat()
     exam.end_time = body.end_time.astimezone(timezone.utc).isoformat()
     exam.question_ids = list(body.question_ids)
-    exam.question_mode = "manual"
     exam.paper_snapshot = paper
     exam.status = "active"
     db.flush()
