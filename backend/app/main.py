@@ -76,6 +76,8 @@ class CharsetMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
         ct = response.headers.get('content-type', '')
+        if 'text/html' in ct or request.url.path.startswith('/static/js/'):
+            response.headers['cache-control'] = 'no-store'
         if ('text/html' in ct or 'javascript' in ct or 'text/css' in ct) and 'charset' not in ct:
             response.headers['content-type'] = ct + '; charset=utf-8'
         return response

@@ -35,6 +35,18 @@ test('ISSUE-01: DOCX passes the actual upload hook and file picker', () => {
   assert.equal(env.run("MediaPage.setup().checkUpload({name:'unsupported.doc'})"), false);
 });
 
+test('media uploads work with no category and with a selected category', async () => {
+  const env = load();
+  env.context.setTimeout = fn => fn();
+  env.run("var uploads=[]; api.uploadMedia=async(file,params)=>uploads.push(params); api.listMedia=async()=>({items:[],meta:{total:0}}); api.listMediaCategories=async()=>[]; var media=MediaPage.setup();");
+  await env.run("media.doUpload({file:{name:'lesson.pdf'}})");
+  assert.equal(env.run('uploads.length'), 1);
+  assert.equal(env.run('uploads[0].category_id'), undefined);
+  env.run("media.selectCategory({id:'own-category'})");
+  await env.run("media.doUpload({file:{name:'lesson.pdf'}})");
+  assert.equal(env.run('uploads[1].category_id'), 'own-category');
+});
+
 test('ISSUE-02: new chapters load video; refresh and type changes use the current type', async () => {
   const env = load();
   env.run("var queries=[]; api.listMedia=async q=>{queries.push(q.media_type);return {items:[{id:'video',name:'clip.mp4'}]}}; var page=CourseDetailPage.setup({id:'course'}); page.openAddCh();");

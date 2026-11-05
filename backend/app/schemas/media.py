@@ -59,4 +59,5 @@ class MediaCategoryResponse(MediaCategoryBase):
     created_by: str | None = None
     created_at: datetime
     asset_count: int = 0
+    can_manage: bool = False
     model_config = {"from_attributes": True}

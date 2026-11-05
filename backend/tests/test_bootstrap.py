@@ -41,6 +41,13 @@ class BootstrapTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 404)
                 self.assertEqual(response.json(), {"detail": "Not Found"})
 
+    def test_pages_and_application_scripts_do_not_reuse_stale_cache(self):
+        for path in ("/", "/media", "/static/js/app.js", "/static/js/api.js"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers.get("cache-control"), "no-store")
+
     def test_spa_fallback_does_not_serve_backend_source(self):
         response = self.client.get("/app/config.py")
         self.assertEqual(response.status_code, 200)

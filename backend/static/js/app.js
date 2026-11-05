@@ -756,13 +756,14 @@ const MediaPage = {
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h2>\u7d20\u6750\u5e93</h2>
-      <el-button type="primary" v-if="api.hasRole('admin')" @click="showCatCreate=true">\u65b0\u5efa\u5206\u7c7b</el-button>
+      <el-button type="primary" v-if="api.hasPerm('course:create')" @click="openCreateCategory">\u65b0\u5efa\u5206\u7c7b</el-button>
     </div>
     <el-row :gutter="20">
       <el-col :span="6">
         <el-card shadow="never">
           <template #header><span>\u5206\u7c7b\u5217\u8868</span></template>
           <div style="max-height:600px;overflow-y:auto">
+            <el-button text :type="selectedCat ? 'default' : 'primary'" @click="selectCategory(null)">全部素材</el-button>
             <div v-for="c in categories" :key="c.id" @click="selectCategory(c)"
               :style="{padding:'12px',borderRadius:'8px',marginBottom:'8px',cursor:'pointer',
               background: selectedCat&&selectedCat.id===c.id?'#f3edff':'#fff',
@@ -770,7 +771,7 @@ const MediaPage = {
               <div style="font-weight:500;margin-bottom:4px">{{ c.name }}</div>
               <div style="font-size:13px;color:#909399">{{ c.asset_count }}\u4e2a\u7d20\u6750</div>
               <div v-if="c.description" style="font-size:12px;color:#c0c4cc;margin-top:4px">{{ c.description }}</div>
-              <div style="margin-top:8px;display:flex;gap:4px" v-if="api.hasRole('admin')&&selectedCat&&selectedCat.id===c.id">
+              <div style="margin-top:8px;display:flex;gap:4px" v-if="c.can_manage&&selectedCat&&selectedCat.id===c.id">
                 <el-button size="small" text type="primary" @click.stop="editCategory(c)">\u7f16\u8f91</el-button>
                 <el-button size="small" text type="danger" @click.stop="delCategory(c)">\u5220\u9664</el-button>
               </div>
@@ -784,8 +785,8 @@ const MediaPage = {
           <template #header>
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span>{{ selectedCat ? selectedCat.name + ' (\u5171' + total + '\u4e2a\u7d20\u6750)' : '\u5168\u90e8\u7d20\u6750 (' + total + ')' }}</span>
-              <div v-if="selectedCat" style="display:flex;align-items:center;gap:8px">
-                <el-upload :show-file-list="false" :http-request="doUpload" :before-upload="checkUpload" :disabled="uploading" :accept="'.pdf,.docx,.mp4,.avi,.mov,.jpg,.png,.mp3,.wav'">
+              <div style="display:flex;align-items:center;gap:8px">
+                <el-upload :show-file-list="false" :http-request="doUpload" :before-upload="checkUpload" :disabled="uploading" :accept="'.pdf,.docx,.mp4,.jpg,.jpeg,.png'">
                   <el-button size="small" type="primary" :loading="uploading">\u4e0a\u4f20\u7d20\u6750</el-button>
                 </el-upload>
                 <template v-if="uploading">
@@ -795,7 +796,7 @@ const MediaPage = {
               </div>
             </div>
           </template>
-          <el-input v-if="selectedCat" v-model="searchKw" placeholder="\u641c\u7d22\u7d20\u6750\u540d\u79f0" size="small" style="width:200px;margin-bottom:12px" clearable @input="load" />
+          <el-input v-model="searchKw" placeholder="\u641c\u7d22\u7d20\u6750\u540d\u79f0" size="small" style="width:200px;margin-bottom:12px" clearable @input="load" />
           <el-table :data="items" stripe size="small">
             <el-table-column prop="name" label="\u6587\u4ef6\u540d" min-width="200" show-overflow-tooltip />
             <el-table-column prop="media_type" label="\u7c7b\u578b" width="80" />
@@ -834,7 +835,8 @@ const MediaPage = {
     const load = async () => {
       try {
         const params = { page:page.value, page_size:pageSize };
-        if (selectedCat.value) { params.category_id = selectedCat.value.id; if (searchKw.value) params.keyword = searchKw.value; }
+        if (selectedCat.value) params.category_id = selectedCat.value.id;
+        if (searchKw.value) params.keyword = searchKw.value;
         const r = await api.listMedia(params); items.value = r.items||[]; total.value = r.meta.total;
       } catch(e) { ElMessage.error(e.message); }
     };
@@ -848,11 +850,10 @@ const MediaPage = {
       return true;
     };
     const doUpload = async (req) => {
-      if (!selectedCat.value) return ElMessage.warning("\u8bf7\u5148\u9009\u62e9\u5206\u7c7b");
       uploading.value = true; uploadPercent.value = 0; uploadPhase.value = "upload";
       try {
         // 两段式进度: 传输阶段映射 0~85%, 后端处理阶段停在 85%, 完成才到 100%
-        await api.uploadMedia(req.file, { category_id: selectedCat.value.id }, (p) => {
+        await api.uploadMedia(req.file, selectedCat.value ? { category_id: selectedCat.value.id } : {}, (p) => {
           if (p >= 100) { uploadPhase.value = "save"; uploadPercent.value = 85; }
           else { uploadPercent.value = Math.round(p * 0.85); }
         });
@@ -869,6 +870,7 @@ const MediaPage = {
       try { await ElMessageBox.confirm("\u786e\u8ba4\u5220\u9664\uff1f","\u63d0\u793a",{type:"warning"}); await api.deleteMedia(m.id); ElMessage.success("\u5220\u9664\u6210\u529f"); load(); loadCategories(); }
       catch(e) { if(e!=="cancel") ElMessage.error(e.message); }
     };
+    const openCreateCategory = () => { editingCatId.value=""; catForm.name=""; catForm.description=""; showCatCreate.value=true; };
     const saveCategory = async () => {
       if (!catForm.name) return ElMessage.warning("\u8bf7\u8f93\u5165\u5206\u7c7b\u540d\u79f0");
       try {
@@ -883,12 +885,12 @@ const MediaPage = {
         await ElMessageBox.confirm("\u786e\u8ba4\u5220\u9664\u5206\u7c7b\u201c"+c.name+"\u201d\uff1f\u7d20\u6750\u4e0d\u4f1a\u5220\u9664\uff0c\u4f46\u4f1a\u89e3\u9664\u5173\u8054\u3002","\u63d0\u793a",{type:"warning"});
         await api.deleteMediaCategory(c.id); ElMessage.success("\u5220\u9664\u6210\u529f");
         if (selectedCat.value && selectedCat.value.id === c.id) { selectedCat.value = null; items.value = []; total.value = 0; }
-        await loadCategories();
+        await loadCategories(); await load();
       } catch(e) { if(e!=="cancel") ElMessage.error(e.message); }
     };
 
     onMounted(async () => { await loadCategories(); await load(); });
-    return { categories, selectedCat, items, total, page, pageSize, searchKw, showCatCreate, editingCatId, catForm, formatSize, uploading, uploadPercent, uploadPhase, loadCategories, selectCategory, load, doUpload, checkUpload, del, saveCategory, editCategory, delCategory, navigate };
+    return { categories, selectedCat, items, total, page, pageSize, searchKw, showCatCreate, editingCatId, catForm, formatSize, uploading, uploadPercent, uploadPhase, loadCategories, selectCategory, load, doUpload, checkUpload, del, openCreateCategory, saveCategory, editCategory, delCategory, navigate };
   }
 };
 

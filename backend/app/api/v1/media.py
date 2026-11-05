@@ -62,44 +62,52 @@ def list_media_categories(requester: User = Depends(get_current_user), db: Sessi
     for cat, count in results:
         item = MediaCategoryResponse.model_validate(cat)
         item.asset_count = count
+        item.can_manage = "admin" in access.roles_for(db, requester) or str(cat.created_by) == str(requester.id)
         items.append(item)
     return items
 
 
 @router.post("/categories", response_model=MediaCategoryResponse, status_code=201)
 def create_media_category(body: MediaCategoryCreate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    access.require_admin(db, requester)
     perms = load_user_permissions(db, requester.id)
     if Perm.COURSE_CREATE not in perms:
         raise HTTPException(403, "Requires permission: course:create")
     cat = MediaCategoryService.create_category(db, body, requester.id)
     db.commit()
-    return MediaCategoryResponse.model_validate(cat)
+    item = MediaCategoryResponse.model_validate(cat)
+    item.can_manage = True
+    return item
+
+
+def _editable_media_category(db: Session, requester: User, cat_id: str):
+    if Perm.COURSE_CREATE not in load_user_permissions(db, requester.id):
+        raise HTTPException(403, "无权管理素材分类")
+    cat = MediaCategoryService.get_category(db, cat_id)
+    if not cat:
+        raise HTTPException(404, "素材分类不存在")
+    if "admin" not in access.roles_for(db, requester) and str(cat.created_by) != str(requester.id):
+        raise HTTPException(403, "只能管理自己创建的素材分类")
+    return cat
 
 
 @router.put("/categories/{cat_id}", response_model=MediaCategoryResponse)
 def update_media_category(cat_id: str, body: MediaCategoryUpdate, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    access.require_admin(db, requester)
-    perms = load_user_permissions(db, requester.id)
-    if Perm.COURSE_CREATE not in perms:
-        raise HTTPException(403, "Requires permission: course:create")
-    cat = MediaCategoryService.get_category(db, cat_id)
-    if not cat:
-        raise HTTPException(404, "Media category not found")
+    cat = _editable_media_category(db, requester, cat_id)
     cat = MediaCategoryService.update_category(db, cat, body)
     db.commit()
-    return MediaCategoryResponse.model_validate(cat)
+    item = MediaCategoryResponse.model_validate(cat)
+    item.can_manage = True
+    return item
 
 
 @router.delete("/categories/{cat_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_media_category(cat_id: str, requester: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    access.require_admin(db, requester)
-    perms = load_user_permissions(db, requester.id)
-    if Perm.COURSE_CREATE not in perms:
-        raise HTTPException(403, "Requires permission: course:create")
-    cat = MediaCategoryService.get_category(db, cat_id)
-    if not cat:
-        raise HTTPException(404, "Media category not found")
+    cat = _editable_media_category(db, requester, cat_id)
+    if "admin" not in access.roles_for(db, requester) and db.scalar(select(MediaAsset.id).where(
+        MediaAsset.category_id == cat_id,
+        (MediaAsset.uploaded_by != str(requester.id)) | MediaAsset.uploaded_by.is_(None),
+    ).limit(1)):
+        raise HTTPException(409, "分类中有其他用户的素材，请联系管理员处理")
     MediaCategoryService.delete_category(db, cat)
     db.commit()
 
