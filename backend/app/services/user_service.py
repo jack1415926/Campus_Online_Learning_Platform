@@ -1,4 +1,3 @@
-"""User management service: CRUD, grouping, and profile operations."""
 
 
 from sqlalchemy import func, or_, select

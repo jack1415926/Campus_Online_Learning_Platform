@@ -7,8 +7,6 @@ from app.models.base import Base, TimestampMixin, UUIDPrimaryKey
 
 
 class MediaCategory(Base, UUIDPrimaryKey, TimestampMixin):
-    """A media library category (e.g. training videos, product docs)."""
-
     __tablename__ = "media_categories"
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

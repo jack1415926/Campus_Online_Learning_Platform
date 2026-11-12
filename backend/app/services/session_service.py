@@ -83,12 +83,10 @@ def validate_session(db: DbSession, session_id: str | None, raw_token: str | Non
             db.flush()
             return None, "expired"
 
-    # Touch last_active_at (only update timestamp, not on every request to reduce writes)
     return session, None
 
 
 def touch_session(db: DbSession, session: Session) -> None:
-    """Refresh the last_active_at (sliding session)."""
     session.last_active_at = datetime.now(timezone.utc)
 
 

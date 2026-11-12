@@ -51,7 +51,5 @@ class UserCreateRequest(BaseModel):
 
 
 class UserGroupFilter(BaseModel):
-    """Filter criteria for user grouping."""
-
     status: str | None = None
     keyword: str | None = None  # search name/username

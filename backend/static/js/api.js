@@ -92,7 +92,6 @@ const api = {
   listCategories() { return this.request("GET", "/categories"); },
   createCategory(body) { return this.request("POST", "/categories", body); },
   deleteCategory(id) { return this.request("DELETE", "/categories/" + id); },
-  // Tags
   // Media
   listMedia(params) { const q = params ? "?" + new URLSearchParams(params).toString() : ""; return this.request("GET", "/media" + q); },
   getMedia(id) { return this.request("GET", "/media/" + id); },

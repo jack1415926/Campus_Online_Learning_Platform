@@ -130,7 +130,6 @@ def list_users(
     requester: User = Depends(require_permission(Perm.USER_READ)),
     db: Session = Depends(get_db),
 ):
-    """List users with optional grouping filters."""
     filt = UserGroupFilter(
         status=user_status,
         keyword=keyword,

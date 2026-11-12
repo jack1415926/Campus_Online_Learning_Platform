@@ -83,7 +83,6 @@ def refresh_token(body: RefreshRequest, request: Request, db: Session = Depends(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    # Reuse the existing session if it's still valid, else create a new one
     old_sid = payload.get("sid")
     old_sess = payload.get("sess")
     session, _ = validate_session(db, old_sid, old_sess) if old_sid and old_sess else (None, "invalid")

@@ -121,7 +121,6 @@ const CourseListPage = {
   }
 };
 
-// ===== Course Detail with REAL learning =====
 const CourseDetailPage = {
   components: { HomeworkPanel, CampusExamPanel, CommunicationPanel, CertificatePanel },
   props: ["id"],
@@ -709,7 +708,6 @@ const ExamTakePage = {
   }
 };
 
-// ===== Exam Result Analysis =====
 const UserManagePage = {
   template: `<div><h2>用户管理与教师审核</h2><div style="display:flex;gap:12px;margin:16px 0">
     <el-input v-model="keyword" placeholder="搜索姓名或用户名" @keyup.enter="search" style="width:240px" />
@@ -937,7 +935,6 @@ const CategoryPage = {
   }
 };
 
-// ===== Notifications with detail =====
 const NotificationPage = {
   template: `
   <div>
@@ -995,7 +992,6 @@ const ProfilePage = {
     onMounted(load);return{profile,form,password,reviewText,save,refreshReview,changePassword};}
 };
 
-// ===== Main App with full navigation =====
 const App = {
   setup() {
     const currentPage = ref("login"); const currentParam = ref(null);

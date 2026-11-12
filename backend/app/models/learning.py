@@ -52,7 +52,6 @@ class LearningRecord(Base, UUIDPrimaryKey, TimestampMixin):
     # Progress tracking
     learning_seconds: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     progress_percent: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    # : resume position
     resume_position: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # e.g. {"video_time": 120, "page": 3}
     status: Mapped[CompletionStatus] = mapped_column(

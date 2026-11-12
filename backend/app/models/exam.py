@@ -91,5 +91,4 @@ class ExamRecord(Base, UUIDPrimaryKey, TimestampMixin):
     graded_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
     graded_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     attempt_number: Mapped[int] = mapped_column(Integer, default=1)
-    # : result analysis data
     time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
